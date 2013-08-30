@@ -16,6 +16,11 @@ enum Nodes {
 
     NODE_TOK,
 
+    NODE_ID,
+
+    NODE_INT_LITERAL,
+    NODE_FLOAT_LITERAL,
+    NODE_CHAR_LITERAL,
     NODE_STR_LITERAL,
 
     NODE_PAREN,
@@ -76,6 +81,13 @@ enum Nodes {
     NODE_AND,
 
     NODE_OR,
+
+    NODE_CONDITIONAL,
+
+    NODE_ASG,
+    NODE_RASG,
+
+    NODE_COMMA,
 
     NODE_LAST
 };

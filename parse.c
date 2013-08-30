@@ -115,8 +115,43 @@ if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
 } \
 } while (0)
 
+/***************************************************************
+ * CONSTANTS                                                   *
+ ***************************************************************/
+static Node *parseConstant(ParseState *state, Node *parent)
+{
+    Node *ret;
+
+    if ((ret = expectN(state, parent, TOK_INT_LITERAL))) {
+        ret->type = NODE_INT_LITERAL;
+        return ret;
+    }
+
+    if ((ret = expectN(state, parent, TOK_FLOAT_LITERAL))) {
+        ret->type = NODE_FLOAT_LITERAL;
+        return ret;
+    }
+
+    if ((ret = expectN(state, parent, TOK_CHAR_LITERAL))) {
+        ret->type = NODE_CHAR_LITERAL;
+        return ret;
+    }
+
+    if ((ret = expectN(state, parent, TOK_STR_LITERAL))) {
+        ret->type = NODE_STR_LITERAL;
+        return ret;
+    }
+
+    return NULL;
+}
+
+/***************************************************************
+ * EXPRESSIONS                                                 *
+ ***************************************************************/
 static Node *parsePrimaryExpression(ParseState *state, Node *parent);
 static Node *parseCastExpression(ParseState *state, Node *parent);
+static Node *parseAssignmentExpression(ParseState *state, Node *parent);
+static Node *parseExpression(ParseState *state, Node *parent);
 
 static Node *parseArgumentExpressionList(ParseState *state, Node *parent)
 {
@@ -206,14 +241,14 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
 
         if ((node2 = expectN(state, parent, TOK_DOT))) {
             MKRETN2(NODE_MEMBER_DOT, 3);
-            REQUIREP(2, parseIdentifier);
+            REQUIRET(2, TOK_ID);
             node = ret;
             continue;
         }
 
         if ((node2 = expectN(state, parent, TOK_ARROW))) {
             MKRETN2(NODE_MEMBER_ARROW, 3);
-            REQUIREP(2, parseIdentifier);
+            REQUIRET(2, TOK_ID);
             node = ret;
             continue;
         }
@@ -381,6 +416,55 @@ BINARY_OP_START(parseOrExpression, parseAndExpression)
     BINARY_OP(TOK_OROR, NODE_OR, parseAndExpression)
 BINARY_OP_END()
 
+static Node *parseConditionalExpression(ParseState *state, Node *parent)
+{
+    Node *ret, *node, *node2;
+
+    if (!(node = parseOrExpression(state, parent))) return NULL;
+
+    if ((node2 = expectN(state, parent, TOK_HOOK))) {
+        MKRETN2(NODE_CONDITIONAL, 5);
+        REQUIREP(2, parseExpression);
+        REQUIRET(3, TOK_COLON);
+        REQUIREP(4, parseConditionalExpression);
+        return ret;
+    }
+
+    return node;
+}
+
+static Node *parseAssignmentExpression(ParseState *state, Node *parent)
+{
+    Node *ret, *node;
+    Token *tok;
+
+    if ((node = parseUnaryExpression(state, parent))) {
+        tok = scan(state);
+        if (tok->type <= TOK_ASG_START && tok->type >= TOK_ASG_END) {
+            /* not an assignment expression */
+            pushToken(state, tok);
+            pushNode(state, node);
+            freeNode(node);
+            return parseConditionalExpression(state, parent);
+        }
+
+        /* an assignment */
+        MKRETN(NODE_ASG, 3);
+        node = newNode(ret, NODE_TOK, tok, 0);
+        ret->children[1] = node;
+        if (tok->type > TOK_ASG)
+            ret->type = NODE_RASG;
+        REQUIREP(2, parseAssignmentExpression);
+        return ret;
+    }
+
+    return parseConditionalExpression(state, parent);
+}
+
+BINARY_OP_START(parseExpression, parseAssignmentExpression);
+    BINARY_OP(TOK_COMMA, NODE_COMMA, parseAssignmentExpression);
+BINARY_OP_END()
+
 static Node *parseGenericAssociation(ParseState *state, Node *parent)
 {
     Node *ret, *node;
@@ -467,12 +551,11 @@ static Node *parsePrimaryExpression(ParseState *state, Node *parent)
     Node *ret;
     Token *tok;
 
-    if ((ret = parseIdentifier(state, parent))) return ret;
-    if ((ret = parseConstant(state, parent))) return ret;
-    if ((ret = expectN(state, parent, TOK_STR_LITERAL))) {
-        ret->type = NODE_STR_LITERAL;
+    if ((ret = expectN(state, parent, TOK_ID))) {
+        ret->type = NODE_ID;
         return ret;
     }
+    if ((ret = parseConstant(state, parent))) return ret;
 
     if ((tok = expect(state, TOK_LPAREN))) {
         /* parenthesized expression */
