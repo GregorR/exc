@@ -4,8 +4,9 @@
 #include <sys/types.h>
 
 typedef struct Token_ {
-    size_t len;
-    char *tok;
+    int type;
+    size_t f, l, c;
+    char *pre, *tok;
 } Token;
 
 typedef struct Node_ {
@@ -14,5 +15,8 @@ typedef struct Node_ {
     Token *tok;
     struct Node *children[1];
 } Node;
+
+Token *newToken(int type, size_t toklen, char *tok);
+Node *newNode(Node *parent, int type, Token *tok, size_t len);
 
 #endif
