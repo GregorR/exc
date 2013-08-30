@@ -315,6 +315,40 @@ static Node *parseCastExpression(ParseState *state, Node *parent)
     return NULL;
 }
 
+static Node *parseMultiplicativeExpression(ParseState *state, Node *parent)
+{
+    Node *ret, *node, *node2;
+
+    if (!(node = parseCastExpression(state, parent))) return NULL;
+
+    while (1) {
+        if ((node2 = expectN(state, parent, TOK_STAR))) {
+            MKRETN2(NODE_MUL, 3);
+            REQUIREP(2, parseCastExpression);
+            node = ret;
+            continue;
+        }
+
+        if ((node2 = expectN(state, parent, TOK_DIV))) {
+            MKRETN2(NODE_DIV, 3);
+            REQUIREP(2, parseCastExpression);
+            node = ret;
+            continue;
+        }
+
+        if ((node2 = expectN(state, parent, TOK_MOD))) {
+            mkRETN2(NODE_MOD, 3);
+            REQUIREP(2, parseCastExpression);
+            node = ret;
+            continue;
+        }
+
+        break;
+    }
+
+    return node;
+}
+
 static Node *parseGenericAssociation(ParseState *state, Node *parent)
 {
     Node *ret, *node;

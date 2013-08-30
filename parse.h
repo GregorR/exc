@@ -49,6 +49,10 @@ enum Nodes {
 
     NODE_CAST,
 
+    NODE_MUL,
+    NODE_DIV,
+    NODE_MOD,
+
     NODE_LAST
 };
 
