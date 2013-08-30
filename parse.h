@@ -56,6 +56,27 @@ enum Nodes {
     NODE_ADD,
     NODE_SUB,
 
+    NODE_SHL,
+    NODE_SHR,
+
+    NODE_LT,
+    NODE_GT,
+    NODE_LTE,
+    NODE_GTE,
+
+    NODE_EQ,
+    NODE_NEQ,
+
+    NODE_BAND,
+
+    NODE_BXOR,
+
+    NODE_BOR,
+
+    NODE_AND,
+
+    NODE_OR,
+
     NODE_LAST
 };
 

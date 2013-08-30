@@ -315,66 +315,71 @@ static Node *parseCastExpression(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseMultiplicativeExpression(ParseState *state, Node *parent)
-{
-    Node *ret, *node, *node2;
-
-    if (!(node = parseCastExpression(state, parent))) return NULL;
-
-    while (1) {
-        if ((node2 = expectN(state, parent, TOK_STAR))) {
-            MKRETN2(NODE_MUL, 3);
-            REQUIREP(2, parseCastExpression);
-            node = ret;
-            continue;
-        }
-
-        if ((node2 = expectN(state, parent, TOK_DIV))) {
-            MKRETN2(NODE_DIV, 3);
-            REQUIREP(2, parseCastExpression);
-            node = ret;
-            continue;
-        }
-
-        if ((node2 = expectN(state, parent, TOK_MOD))) {
-            mkRETN2(NODE_MOD, 3);
-            REQUIREP(2, parseCastExpression);
-            node = ret;
-            continue;
-        }
-
-        break;
+#define BINARY_OP_START(name, nextNode) \
+    static Node *name(ParseState *state, Node *parent) \
+    { \
+        Node *ret, *node, *node2; \
+        if (!(node = nextNode(state, parent))) return NULL; \
+        while (1) {
+#define BINARY_OP_END() \
+            break; \
+        } \
+        return node; \
     }
+#define BINARY_OP(reqTok, genNode, nextNode) \
+    if ((node2 = expectN(state, parent, reqTok))) { \
+        MKRETN2(genNode, 3); \
+        REQUIREP(2, nextNode); \
+        continue; \
+    } \
 
-    return node;
-}
+BINARY_OP_START(parseMultiplicativeExpression, parseCastExpression)
+    BINARY_OP(TOK_STAR, NODE_MUL, parseCastExpression)
+    BINARY_OP(TOK_DIV, NODE_DIV, parseCastExpression)
+    BINARY_OP(TOK_MOD, NODE_MOD, parseCastExpression)
+BINARY_OP_END()
 
-static Node *parseAdditiveExpression(ParseState *state, Node *parent)
-{
-    Node *ret, *node, *node2;
+BINARY_OP_START(parseAdditiveExpression, parseMultiplicativeExpression)
+    BINARY_OP(TOK_PLUS, NODE_ADD, parseMultiplicativeExpression)
+    BINARY_OP(TOK_MINUS, NODE_SUB, parseMultiplicativeExpression)
+BINARY_OP_END()
 
-    if (!(node = parseMultiplicativeExpression(state, parent))) return NULL;
+BINARY_OP_START(parseShiftExpression, parseAdditiveExpression)
+    BINARY_OP(TOK_SHL, NODE_SHL, parseAdditiveExpression)
+    BINARY_OP(TOK_SHR, NODE_SHR, parseAdditiveExpression)
+BINARY_OP_END()
 
-    while (1) {
-        if ((node2 = expectN(state, parent, TOK_PLUS))) {
-            MKRETN2(NODE_ADD, 3);
-            REQUIREP(2, parseMultiplicativeExpression);
-            node = ret;
-            continue;
-        }
+BINARY_OP_START(parseRelationalExpression, parseShiftExpression)
+    BINARY_OP(TOK_LT, NODE_LT, parseShiftExpression)
+    BINARY_OP(TOK_GT, NODE_GT, parseShiftExpression)
+    BINARY_OP(TOK_LTE, NODE_LTE, parseShiftExpression)
+    BINARY_OP(TOK_GTE, NODE_GTE, parseShiftExpression)
+BINARY_OP_END()
 
-        if ((node2 = expectN(state, parent, TOK_MINUS))) {
-            MKRETN2(NODE_SUB, 3);
-            REQUIREP(2, parseMultiplicativeExpression);
-            node = ret;
-            continue;
-        }
+BINARY_OP_START(parseEqualityExpression, parseRelationalExpression)
+    BINARY_OP(TOK_EQ, NODE_EQ, parseRelationalExpression)
+    BINARY_OP(TOK_NEQ, NODE_NEQ, parseRelationalExpression)
+BINARY_OP_END()
 
-        break;
-    }
+BINARY_OP_START(parseBAndExpression, parseEqualityExpression)
+    BINARY_OP(TOK_AND, NODE_BAND, parseEqualityExpression)
+BINARY_OP_END()
 
-    return node;
-}
+BINARY_OP_START(parseBXorExpression, parseBAndExpression)
+    BINARY_OP(TOK_BXOR, NODE_BXOR, parseBAndExpression)
+BINARY_OP_END()
+
+BINARY_OP_START(parseBOrExpression, parseBXorExpression)
+    BINARY_OP(TOK_BOR, NODE_BOR, parseBXorExpression)
+BINARY_OP_END()
+
+BINARY_OP_START(parseAndExpression, parseBOrExpression)
+    BINARY_OP(TOK_ANDAND, NODE_AND, parseBOrExpression)
+BINARY_OP_END()
+
+BINARY_OP_START(parseOrExpression, parseAndExpression)
+    BINARY_OP(TOK_OROR, NODE_OR, parseAndExpression)
+BINARY_OP_END()
 
 static Node *parseGenericAssociation(ParseState *state, Node *parent)
 {
