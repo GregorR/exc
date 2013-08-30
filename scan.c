@@ -42,7 +42,7 @@ static void updateIdx(ScanState *state, size_t ni)
 {
     size_t i;
     for (i = state->idx; i < ni; i++) {
-        switch (state->buf->buf[i]) {
+        switch (state->buf.buf[i]) {
             case '\n':
                 state->l++;
                 state->c = 1;
@@ -58,7 +58,7 @@ static char *getWhite(ScanState *state)
 {
     size_t fi = state->idx;
     size_t i = fi;
-    struct Buffer_char *buf = state->buf;
+    struct Buffer_char *buf = &state->buf;
     char c = buf->buf[i];
 
     if (!c) return strdup("");
@@ -66,10 +66,13 @@ static char *getWhite(ScanState *state)
     while (ciswhite(c) ||
            (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*'))) {
         if (c == '/') {
-            if (buf->buf[i+1] == '/')
-                for (i+=2; buf->buf[i] && buf->buf[i] != '\n'; i++);
-            else
+            if (buf->buf[i+1] == '/') {
+                for (i+=2; buf->buf[i] && buf->buf[i] != '\n'; i++) {
+                    if (buf->buf[i] == '\\' && buf->buf[i+1]) i++;
+                }
+            } else {
                 for (i++; buf->buf[i+1] && (buf->buf[i] != '*' || buf->buf[i+1] != '/'); i++);
+            }
         } else i++;
     }
 
@@ -83,7 +86,7 @@ Token *cscan(ScanState *state)
     int ttype = 0;
     char *pre = NULL, *tok = NULL;
     size_t fi, i;
-    struct Buffer_char *buf = state->buf;
+    struct Buffer_char *buf = &state->buf;
     char c;
 
     /* get any preceding whitespace */
@@ -447,4 +450,11 @@ fail:
     free(tok);
     free(ret);
     return NULL;
+}
+
+void freeToken(Token *tok)
+{
+    free(tok->pre);
+    free(tok->tok);
+    free(tok);
 }

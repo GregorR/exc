@@ -80,10 +80,12 @@ enum Tokens {
 };
 
 typedef struct ScanState_ {
-    struct Buffer_char *buf;
+    struct Buffer_char buf;
     size_t idx, f, l, c;
 } ScanState;
 
 Token *cscan(ScanState *state);
+
+void freeToken(Token *tok);
 
 #endif
