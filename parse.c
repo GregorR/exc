@@ -116,6 +116,7 @@ if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
 } while (0)
 
 static Node *parsePrimaryExpression(ParseState *state, Node *parent);
+static Node *parseCastExpression(ParseState *state, Node *parent);
 
 static Node *parseArgumentExpressionList(ParseState *state, Node *parent)
 {
@@ -188,7 +189,7 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
 
     while (1) {
         if ((node2 = expectN(state, parent, TOK_LBRACKET))) {
-            MKRETN2(NODE_INDEX_EXPRESSION, 4);
+            MKRETN2(NODE_INDEX, 4);
             REQUIREP(2, parseExpression);
             REQUIRET(3, TOK_RBRACKET);
             node = ret;
@@ -196,7 +197,7 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
         }
 
         if ((node2 = expectN(state, parent, TOK_LPAREN))) {
-            MKRETN2(NODE_CALL_EXPRESSION, 4);
+            MKRETN2(NODE_CALL, 4);
             REQUIREP(2, parseArgumentExpressionListOpt);
             REQUIRET(3, TOK_RPAREN);
             node = ret;
@@ -204,14 +205,14 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
         }
 
         if ((node2 = expectN(state, parent, TOK_DOT))) {
-            MKRETN2(NODE_MEMBER_DOT_EXPRESSION, 3);
+            MKRETN2(NODE_MEMBER_DOT, 3);
             REQUIREP(2, parseIdentifier);
             node = ret;
             continue;
         }
 
         if ((node2 = expectN(state, parent, TOK_ARROW))) {
-            MKRETN2(NODE_MEMBER_ARROW_EXPRESSION, 3);
+            MKRETN2(NODE_MEMBER_ARROW, 3);
             REQUIREP(2, parseIdentifier);
             node = ret;
             continue;
@@ -287,6 +288,30 @@ static Node *parseUnaryExpression(ParseState *state, Node *parent)
     UNARY_OP(TOK_sizeof, NODE_SIZEOF_EXP);
 #undef UNARY_OP
 
+    return NULL;
+}
+
+static Node *parseCastTypeExpression(ParseState *state, Node *parent)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_LPAREN))) {
+        MKRETT(NODE_CAST, 3);
+        REQUIREP(0, parseTypeName);
+        REQUIRET(1, TOK_RPAREN);
+        REQUIREP(2, parseCastExpression);
+        return ret;
+    }
+
+    return NULL;
+}
+
+static Node *parseCastExpression(ParseState *state, Node *parent)
+{
+    Node *ret;
+    if ((ret = parseCastTypeExpression(state, parent))) return ret;
+    if ((ret = parseUnaryExpression(state, parent))) return ret;
     return NULL;
 }
 
