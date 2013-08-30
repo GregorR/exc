@@ -1,6 +1,10 @@
 #ifndef PARSE_H
 #define PARSE_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+
 #include "buffer.h"
 #include "node.h"
 #include "scan.h"
@@ -25,6 +29,23 @@ enum Nodes {
     NODE_CALL_EXPRESSION,
     NODE_MEMBER_DOT_EXPRESSION,
     NODE_MEMBER_ARROW_EXPRESSION,
+    NODE_POSTINC,
+    NODE_POSTDEC,
+    NODE_COMPOUND_LITERAL,
+
+    NODE_ARGUMENT_EXPRESSION_LIST,
+
+    NODE_PREINC,
+    NODE_PREDEC,
+    NODE_ADDROF,
+    NODE_DEREF,
+    NODE_POSITIVE,
+    NODE_NEGATIVE,
+    NODE_BNOT,
+    NODE_NOT,
+    NODE_SIZEOF_EXP,
+    NODE_SIZEOF_TYPE,
+    NODE_ALIGNOF,
 
     NODE_LAST
 };

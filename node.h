@@ -13,7 +13,7 @@ typedef struct Node_ {
     struct Node_ *parent;
     int type;
     Token *tok;
-    struct Node *children[1];
+    struct Node_ *children[1];
 } Node;
 
 Token *newToken(int type, size_t toklen, char *tok);

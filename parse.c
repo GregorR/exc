@@ -2,7 +2,7 @@
 
 BUFFER(Nodep, Node *);
 
-static Node *newNode(Node *parent, int type, Token *tok, size_t children)
+Node *newNode(Node *parent, int type, Token *tok, size_t children)
 {
     Node *ret = calloc(sizeof(Node) + children * sizeof(Node *), 1);
     ret->parent = parent;
@@ -33,7 +33,7 @@ static void pushNode(ParseState *state, Node *node)
     for (i--; i >= 0; i--)
         pushNode(state, node->children[i]);
     if (node->tok) {
-        pushToken(node->tok);
+        pushToken(state, node->tok);
         node->tok = NULL;
     }
 }
@@ -44,7 +44,7 @@ static Token *expect(ParseState *state, int type)
 
     if (ret->type == type) return ret;
 
-    pushToken(state, tok);
+    pushToken(state, ret);
     return NULL;
 }
 
@@ -68,7 +68,7 @@ static Node *expectN(ParseState *state, Node *parent, int type)
 #define MKRETN(nodeType, chn) do { \
     ret = newNode(parent, nodeType, NULL, chn); \
     if (!ret) { \
-        pushNode(node); \
+        pushNode(state, node); \
         freeNode(node); \
         return NULL; \
     } \
@@ -79,8 +79,8 @@ static Node *expectN(ParseState *state, Node *parent, int type)
 #define MKRETN2(nodeType, chn) do { \
     ret = newNode(parent, nodeType, NULL, chn); \
     if (!ret) { \
-        pushNode(node); \
-        pushNode(node2); \
+        pushNode(state, node); \
+        pushNode(state, node2); \
         freeNode(node); \
         freeNode(node2); \
         return NULL; \
@@ -94,14 +94,14 @@ static Node *expectN(ParseState *state, Node *parent, int type)
 #define MKRETT(nodeType, chn) do { \
     ret = newNode(parent, nodeType, tok, chn); \
     if (!ret) { \
-        pushToken(tok); \
+        pushToken(state, tok); \
         return NULL; \
     } \
 } while (0)
 
 #define REQUIREP(chn, parser) do { \
 if (!(ret->children[chn] = parser(state, ret))) { \
-    pushNode(ret); \
+    pushNode(state, ret); \
     freeNode(ret); \
     return NULL; \
 } \
@@ -109,11 +109,62 @@ if (!(ret->children[chn] = parser(state, ret))) { \
 
 #define REQUIRET(chn, toktype) do { \
 if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
-    pushNode(ret); \
+    pushNode(state, ret); \
     freeNode(ret); \
     return NULL; \
 } \
 } while (0)
+
+static Node *parsePrimaryExpression(ParseState *state, Node *parent);
+
+static Node *parseArgumentExpressionList(ParseState *state, Node *parent)
+{
+    Node *ret, *node;
+    struct Buffer_Nodep buf;
+    size_t i;
+
+    INIT_BUFFER(buf);
+
+    if (!(node = parseAssignmentExpression(state, parent))) {
+        FREE_BUFFER(buf);
+        return NULL;
+    }
+    WRITE_ONE_BUFFER(buf, node);
+
+    while ((node = expectN(state, parent, TOK_COMMA))) {
+        WRITE_ONE_BUFFER(buf, node);
+
+        if (!(node = parseAssignmentExpression(state, parent))) {
+            for (i = 0; i < buf.bufused; i++) {
+                pushNode(state, buf.buf[i]);
+                freeNode(buf.buf[i]);
+            }
+            FREE_BUFFER(buf);
+            return NULL;
+        }
+
+        WRITE_ONE_BUFFER(buf, node);
+    }
+
+    /* OK, got the whole list */
+    ret = newNode(parent, NODE_ARGUMENT_EXPRESSION_LIST, NULL, buf.bufused);
+    for (i = 0; i < buf.bufused; i++) {
+        ret->children[i] = buf.buf[i];
+        ret->children[i]->parent = ret;
+    }
+
+    FREE_BUFFER(buf);
+
+    return ret;
+}
+
+static Node *parseArgumentExpressionListOpt(ParseState *state, Node *parent)
+{
+    Node *ret;
+
+    if ((ret = parseArgumentExpressionList(state, parent))) return ret;
+    return newNode(parent, NODE_ARGUMENT_EXPRESSION_LIST, NULL, 0);
+}
 
 static Node *parsePostfixExpression(ParseState *state, Node *parent)
 {
@@ -136,7 +187,7 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
     }
 
     while (1) {
-        if ((node2 = expectN(state, TOK_LBRACKET))) {
+        if ((node2 = expectN(state, parent, TOK_LBRACKET))) {
             MKRETN2(NODE_INDEX_EXPRESSION, 4);
             REQUIREP(2, parseExpression);
             REQUIRET(3, TOK_RBRACKET);
@@ -144,7 +195,7 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
             continue;
         }
 
-        if ((node2 = expectN(state, TOK_LPAREN))) {
+        if ((node2 = expectN(state, parent, TOK_LPAREN))) {
             MKRETN2(NODE_CALL_EXPRESSION, 4);
             REQUIREP(2, parseArgumentExpressionListOpt);
             REQUIRET(3, TOK_RPAREN);
@@ -152,27 +203,27 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
             continue;
         }
 
-        if ((node2 = expectN(state, TOK_DOT))) {
+        if ((node2 = expectN(state, parent, TOK_DOT))) {
             MKRETN2(NODE_MEMBER_DOT_EXPRESSION, 3);
             REQUIREP(2, parseIdentifier);
             node = ret;
             continue;
         }
 
-        if ((node2 = expectN(state, TOK_ARROW))) {
-            MKRETN2(NODE_MEMBER_ARROW_EXpRESSION, 3);
+        if ((node2 = expectN(state, parent, TOK_ARROW))) {
+            MKRETN2(NODE_MEMBER_ARROW_EXPRESSION, 3);
             REQUIREP(2, parseIdentifier);
             node = ret;
             continue;
         }
 
-        if ((node2 = expectN(state, TOK_PLUSPLUS))) {
+        if ((node2 = expectN(state, parent, TOK_PLUSPLUS))) {
             MKRETN2(NODE_POSTINC, 2);
             node = ret;
             continue;
         }
 
-        if ((node2 = expectN(state, TOK_MINUSMINUS))) {
+        if ((node2 = expectN(state, parent, TOK_MINUSMINUS))) {
             MKRETN2(NODE_POSTDEC, 2);
             node = ret;
             continue;
@@ -182,6 +233,61 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
     }
 
     return node;
+}
+
+static Node *parseUnaryTypeExpression(ParseState *state, Node *parent)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_sizeof))) {
+        MKRETT(NODE_SIZEOF_TYPE, 3);
+        REQUIRET(0, TOK_LPAREN);
+        REQUIREP(1, parseTypeName);
+        REQUIRET(2, TOK_RPAREN);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK__Alignof))) {
+        MKRETT(NODE_ALIGNOF, 3);
+        REQUIRET(0, TOK_LPAREN);
+        REQUIREP(1, parseTypeName);
+        REQUIRET(2, TOK_RPAREN);
+        return ret;
+    }
+
+    return NULL;
+}
+
+static Node *parseUnaryExpression(ParseState *state, Node *parent)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((ret = parsePostfixExpression(state, parent))) return ret;
+
+#define UNARY_OP(reqTok, genNode) do { \
+    if ((tok = expect(state, reqTok))) { \
+        MKRETT(genNode, 1); \
+        REQUIREP(0, parseUnaryExpression); \
+        return ret; \
+    } \
+} while (0);
+    UNARY_OP(TOK_PLUSPLUS, NODE_PREINC);
+    UNARY_OP(TOK_MINUSMINUS, NODE_PREDEC);
+    UNARY_OP(TOK_AND, NODE_ADDROF);
+    UNARY_OP(TOK_STAR, NODE_DEREF);
+    UNARY_OP(TOK_PLUS, NODE_POSITIVE);
+    UNARY_OP(TOK_MINUS, NODE_NEGATIVE);
+    UNARY_OP(TOK_BNOT, NODE_BNOT);
+    UNARY_OP(TOK_NOT, NODE_NOT);
+
+    if ((ret = parseUnaryTypeExpression(state, parent))) return ret;
+
+    UNARY_OP(TOK_sizeof, NODE_SIZEOF_EXP);
+#undef UNARY_OP
+
+    return NULL;
 }
 
 static Node *parseGenericAssociation(ParseState *state, Node *parent)
@@ -196,7 +302,7 @@ static Node *parseGenericAssociation(ParseState *state, Node *parent)
         return ret;
     }
 
-    if ((tok = expect(state, TOK_DEFAULT))) {
+    if ((tok = expect(state, TOK_default))) {
         MKRETT(NODE_GENERIC_ASSOCIATION_DEFAULT, 2);
         REQUIRET(0, TOK_COLON);
         REQUIREP(1, parseAssignmentExpression);
@@ -225,7 +331,7 @@ static Node *parseGenericAssocList(ParseState *state, Node *parent)
 
         if (!(node = parseGenericAssociation(state, parent))) {
             for (i = 0; i < buf.bufused; i++) {
-                pushNode(buf.buf[i]);
+                pushNode(state, buf.buf[i]);
                 freeNode(buf.buf[i]);
             }
             FREE_BUFFER(buf);
@@ -239,8 +345,10 @@ static Node *parseGenericAssocList(ParseState *state, Node *parent)
     ret = newNode(parent, NODE_GENERIC_ASSOC_LIST, NULL, buf.bufused);
     for (i = 0; i < buf.bufused; i++) {
         ret->children[i] = buf.buf[i];
-        ret->children[i].parent = ret;
+        ret->children[i]->parent = ret;
     }
+
+    FREE_BUFFER(buf);
 
     return ret;
 }
@@ -275,7 +383,7 @@ static Node *parsePrimaryExpression(ParseState *state, Node *parent)
         return ret;
     }
 
-    if (tok = expect(state, TOK_LPAREN)) {
+    if ((tok = expect(state, TOK_LPAREN))) {
         /* parenthesized expression */
         MKRETT(NODE_PAREN, 2);
         REQUIREP(0, parseExpression);
@@ -284,4 +392,6 @@ static Node *parsePrimaryExpression(ParseState *state, Node *parent)
     }
 
     if ((ret = parseGenericSelection(state, parent))) return ret;
+
+    return NULL;
 }
