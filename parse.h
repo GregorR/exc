@@ -53,6 +53,9 @@ enum Nodes {
     NODE_DIV,
     NODE_MOD,
 
+    NODE_ADD,
+    NODE_SUB,
+
     NODE_LAST
 };
 

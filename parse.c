@@ -349,6 +349,33 @@ static Node *parseMultiplicativeExpression(ParseState *state, Node *parent)
     return node;
 }
 
+static Node *parseAdditiveExpression(ParseState *state, Node *parent)
+{
+    Node *ret, *node, *node2;
+
+    if (!(node = parseMultiplicativeExpression(state, parent))) return NULL;
+
+    while (1) {
+        if ((node2 = expectN(state, parent, TOK_PLUS))) {
+            MKRETN2(NODE_ADD, 3);
+            REQUIREP(2, parseMultiplicativeExpression);
+            node = ret;
+            continue;
+        }
+
+        if ((node2 = expectN(state, parent, TOK_MINUS))) {
+            MKRETN2(NODE_SUB, 3);
+            REQUIREP(2, parseMultiplicativeExpression);
+            node = ret;
+            continue;
+        }
+
+        break;
+    }
+
+    return node;
+}
+
 static Node *parseGenericAssociation(ParseState *state, Node *parent)
 {
     Node *ret, *node;
