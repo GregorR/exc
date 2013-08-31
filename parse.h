@@ -15,6 +15,8 @@ enum Nodes {
     NODE_FIRST = 0,
 
     /* Constants/literals */
+    NODE_NIL,
+
     NODE_TOK,
 
     NODE_ID,
@@ -119,6 +121,9 @@ enum Nodes {
     NODE_ALIGNMENT_SPECIFIER,
 
     NODE_DECLARATOR,
+    NODE_DIRECT_DECLARATOR,
+
+    NODE_POINTER,
 
     NODE_LAST
 };
