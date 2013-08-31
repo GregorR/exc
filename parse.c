@@ -153,14 +153,6 @@ static Node *expectN(ParseState *state, Node *parent, int type)
     freeNode(ret); \
 } while (0)
 
-/* restore `tok` from ret->tok and push/delete node */
-#define RESTORET() do { \
-    tok = ret->tok; \
-    ret->tok = NULL; \
-    pushNode(state, ret); \
-    freeNode(ret); \
-} while (0)
-
 /* require a parser succeed, else iffail 
  * This is INTENTIONALLY not a do{}while, to allow for breaks */
 #define REQUIREPO(chn, parser, iffail) { \
@@ -860,7 +852,7 @@ PARSER(DirectAbstractDeclarator)
 
     if ((tok = expect(state, TOK_LPAREN))) {
         MKRETT(NODE_DIRECT_ABSTRACT_DECLARATOR, 2);
-#define RESTORE { RESTORET(); goto pdadrestore; }
+#define RESTORE { pushNode(state, ret); freeNode(ret); goto pdadrestore; }
         REQUIREPR(0, AbstractDeclarator);
         REQUIRETR(1, TOK_RPAREN);
 #undef RESTORE
