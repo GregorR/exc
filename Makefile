@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic \
- -Wno-implicit-function-declaration -Wno-unused-function
+ -Wno-unused-function
 
 SRC=main.c parse.c scan.c unparse.c
 OBJS=$(SRC:.c=.o)
