@@ -8,6 +8,7 @@
 #include "buffer.h"
 #include "node.h"
 
+const char *tokenName(int n);
 struct Buffer_char cunparse(Node *node);
 struct Buffer_char cunparseJSON(Node *node);
 

@@ -6,7 +6,7 @@
 #include "parse.h"
 
 /* convert a token type to a name */
-static const char *tokenName(int n)
+const char *tokenName(int n)
 {
     switch (n) {
 #define TOKEN(x) case TOK_ ## x: return #x;

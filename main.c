@@ -12,6 +12,7 @@ int main(int argc, char **argv)
         ScanState state;
         Node *node;
         struct Buffer_char unparsed;
+        char *error;
 
         FILE *f;
         f = fopen(argv[i], "r");
@@ -27,7 +28,8 @@ int main(int argc, char **argv)
         state.idx = 0;
         state.l = state.c = 1;
 
-        node = cparse(&state);
+        error = NULL;
+        node = cparse(&state, &error);
         FREE_BUFFER(state.buf);
 
         if (node) {
@@ -40,6 +42,10 @@ int main(int argc, char **argv)
             FREE_BUFFER(unparsed);
 
             freeNode(node);
+
+        } else if (error) {
+            fprintf(stderr, "%s\n", error);
+            free(error);
 
         } else {
             fprintf(stderr, "%s: Failed to parse.\n", argv[i]);

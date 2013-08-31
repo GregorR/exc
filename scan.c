@@ -434,7 +434,6 @@ Token *cscan(ScanState *state)
         ttype = TOK_TERM;
     }
 
-    updateIdx(state, i);
     tok = strndup(buf->buf + fi, i - fi);
     if (!tok) goto fail;
 
@@ -442,11 +441,14 @@ Token *cscan(ScanState *state)
     if (!ret) goto fail;
 
     ret->type = ttype;
+    ret->idx = state->idx;
     ret->f = state->f;
     ret->l = state->l;
     ret->c = state->c;
     ret->pre = pre;
     ret->tok = tok;
+
+    updateIdx(state, i);
     return ret;
 
 fail:

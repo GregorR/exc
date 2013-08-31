@@ -5,7 +5,7 @@
 
 typedef struct Token_ {
     int type;
-    size_t f, l, c;
+    size_t idx, f, l, c;
     char *pre, *tok;
 } Token;
 

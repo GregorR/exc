@@ -1,4 +1,8 @@
+#include <string.h>
+
 #include "parse.h"
+
+#include "unparse.h"
 
 BUFFER(Nodep, Node *);
 
@@ -59,6 +63,19 @@ static Token *expect(ParseState *state, int type)
     Token *ret = scan(state);
 
     if (ret->type == type) return ret;
+
+    /* add it to the error state */
+    if (ret->idx > state->eidx) {
+        state->eidx = ret->idx;
+        state->el = ret->l;
+        state->ec = ret->c;
+        state->eexpected.bufused = 0;
+        state->efound = ret->type;
+    }
+
+    if (ret->idx == state->eidx) {
+        WRITE_ONE_BUFFER(state->eexpected, type);
+    }
 
     pushToken(state, ret);
     return NULL;
@@ -662,7 +679,6 @@ PARSER(PrimaryExpression)
 /***************************************************************
  * DECLARATIONS                                                *
  **************************************************************/
-PARSER(TypeSpecifier);
 PARSER(Declarator);
 PARSER(TypeQualifier);
 PARSER(AbstractDeclarator);
@@ -673,6 +689,10 @@ PARSER(DeclarationSpecifiers);
 PARSER(TypeQualifierList);
 PARSER(TypeQualifierListOpt);
 PARSER(Initializer);
+
+/* the third argument prevents multiple specifiers, particularly ID ID (since
+ * this parser is typedef-ambiguous) */
+static Node *parseTypeSpecifier(ParseState *state, Node *parent, int *foundSpecifier);
 
 PARSER(StaticAssertDeclaration)
 {
@@ -1272,10 +1292,11 @@ static Node *parseSpecifierQualifierListL(ParseState *state, Node *parent, int n
     Node *ret;
     struct Buffer_Nodep buf;
     size_t i;
+    int foundSpecifier = 0;
 
     INIT_BUFFER(buf);
 
-    while ((ret = parseTypeSpecifier(state, parent)) ||
+    while ((ret = parseTypeSpecifier(state, parent, &foundSpecifier)) ||
            (ret = parseTypeQualifier(state, parent))) {
         WRITE_ONE_BUFFER(buf, ret);
     }
@@ -1345,7 +1366,7 @@ PARSER(StructOrUnionSpecifier)
     return NULL;
 }
 
-PARSER(TypeSpecifier)
+static Node *parseTypeSpecifier(ParseState *state, Node *parent, int *foundSpecifier)
 {
     Node *ret;
 
@@ -1359,16 +1380,31 @@ PARSER(TypeSpecifier)
         (ret = expectN(state, parent, TOK_signed)) ||
         (ret = expectN(state, parent, TOK_unsigned)) ||
         (ret = expectN(state, parent, TOK__Bool)) ||
-        (ret = expectN(state, parent, TOK__Complex)) ||
-        (ret = expectN(state, parent, TOK_ID))) {
-        /* ID's are included as typedef-name */
+        (ret = expectN(state, parent, TOK__Complex))) {
+        *foundSpecifier = 1;
         ret->type = NODE_TYPE_SPECIFIER;
         return ret;
     }
 
-    if ((ret = parseAtomicTypeSpecifier(state, parent))) return ret;
-    if ((ret = parseStructOrUnionSpecifier(state, parent))) return ret;
-    if ((ret = parseEnumSpecifier(state, parent))) return ret;
+    /* ID's are included as typedef-name */
+    if (!*foundSpecifier && (ret = expectN(state, parent, TOK_ID))) {
+        *foundSpecifier = 1;
+        ret->type = NODE_TYPE_SPECIFIER;
+        return ret;
+    }
+
+    if ((ret = parseAtomicTypeSpecifier(state, parent))) {
+        *foundSpecifier = 1;
+        return ret;
+    }
+    if ((ret = parseStructOrUnionSpecifier(state, parent))) {
+        *foundSpecifier = 1;
+        return ret;
+    }
+    if ((ret = parseEnumSpecifier(state, parent))) {
+        *foundSpecifier = 1;
+        return ret;
+    }
 
     return NULL;
 }
@@ -1410,6 +1446,7 @@ PARSER(DeclarationSpecifiers)
     Node *ret, *node;
     struct Buffer_Nodep buf;
     size_t i;
+    int foundSpecifier = 0;
 
     INIT_BUFFER(buf);
 
@@ -1419,7 +1456,7 @@ PARSER(DeclarationSpecifiers)
             continue;
         }
 
-        if ((node = parseTypeSpecifier(state, parent))) {
+        if ((node = parseTypeSpecifier(state, parent, &foundSpecifier))) {
             WRITE_ONE_BUFFER(buf, node);
             continue;
         }
@@ -1483,17 +1520,53 @@ PARSER(Declaration)
 /***************************************************************
  * ENTRY POINT                                                 *
  ***************************************************************/
-Node *cparse(ScanState *state)
+Node *cparse(ScanState *state, char **error)
 {
     ParseState pState;
     Node *ret;
+    size_t i;
 
     pState.scanState = state;
     INIT_BUFFER(pState.buf);
+    pState.eidx = pState.el = pState.ec = 0;
+    INIT_BUFFER(pState.eexpected);
 
     /* FIXME: obviously this would refer to the top-level parser, not expression */
     ret = parseDeclaration(&pState, NULL);
 
+    if (!ret) {
+        /* failed to parse, find out why */
+        struct Buffer_char ebuf;
+        INIT_BUFFER(ebuf);
+
+        while (BUFFER_SPACE(ebuf) <= 29 + 2*3*sizeof(int))
+            EXPAND_BUFFER(ebuf);
+        ebuf.bufused += sprintf(ebuf.buf + ebuf.bufused,
+                                "At line %d column %d\n expected: ", (int) pState.el, (int) pState.ec);
+
+        /* write out each of the expected names */
+        for (i = 0; i < pState.eexpected.bufused; i++) {
+            const char *tname;
+            if (i != 0) WRITE_ONE_BUFFER(ebuf, ',');
+            tname = tokenName(pState.eexpected.buf[i]);
+            WRITE_BUFFER(ebuf, tname, strlen(tname));
+        }
+
+        WRITE_BUFFER(ebuf, "\n found: ", 9);
+
+        /* and the found name */
+        {
+            const char *tname = tokenName(pState.efound);
+            WRITE_BUFFER(ebuf, tname, strlen(tname));
+        }
+
+        WRITE_BUFFER(ebuf, "\n", 2);
+
+        *error = ebuf.buf;
+    }
+
+    for (i = 0; i < pState.buf.bufused; i++)
+        freeToken(pState.buf.buf[i]);
     FREE_BUFFER(pState.buf);
 
     return ret;

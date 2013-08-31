@@ -23,9 +23,16 @@ enum Nodes {
 
 typedef struct ParseState_ {
     ScanState *scanState;
+
+    /* pushback tokens */
     struct Buffer_Tokenp buf;
+
+    /* error state */
+    size_t eidx, el, ec;
+    struct Buffer_int eexpected;
+    int efound;
 } ParseState;
 
-Node *cparse(ScanState *state);
+Node *cparse(ScanState *state, char **error);
 
 #endif
