@@ -66,7 +66,8 @@ static char *getWhite(ScanState *state)
     if (!c) return strdup("");
 
     while (ciswhite(c) ||
-           (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*'))) {
+           (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*')) ||
+           (c == '#')) {
         if (c == '/') {
             if (buf->buf[i+1] == '/') {
                 for (i+=2; buf->buf[i] && buf->buf[i] != '\n'; i++) {
@@ -75,6 +76,13 @@ static char *getWhite(ScanState *state)
             } else {
                 for (i++; buf->buf[i+1] && (buf->buf[i] != '*' || buf->buf[i+1] != '/'); i++);
             }
+
+        } else if (c == '#') {
+            /* for our purposes, #line and such are whitespace */
+            for (i++; buf->buf[i] && buf->buf[i] != '\n'; i++) {
+                if (buf->buf[i] == '\\' && buf->buf[i+1]) i++;
+            }
+
         } else i++;
 
         c = buf->buf[i];
@@ -320,6 +328,9 @@ Token *cscan(ScanState *state)
                 if (nc == '=') {
                     i++;
                     ttype = TOK_DIVASG;
+                } else if (nc == '@') {
+                    i++;
+                    ttype = TOK_OPEN_DECORATION;
                 } else {
                     ttype = TOK_DIV;
                 }
@@ -420,6 +431,15 @@ Token *cscan(ScanState *state)
                     ttype = TOK_HASHHASH;
                 } else {
                     ttype = TOK_HASH;
+                }
+                break;
+
+            case '@':
+                if (nc == '/') {
+                    i++;
+                    ttype = TOK_CLOSE_DECORATION;
+                } else {
+                    ttype = TOK_DECORATION;
                 }
                 break;
 

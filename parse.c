@@ -161,12 +161,13 @@ static Node *expectN(ParseState *state, Node *parent, int type)
     freeNode(ret); \
 } while (0)
 
-/* require a parser succeed, else iffail */
-#define REQUIREPO(chn, parser, iffail) do { \
+/* require a parser succeed, else iffail 
+ * This is INTENTIONALLY not a do{}while, to allow for breaks */
+#define REQUIREPO(chn, parser, iffail) { \
 if (!(ret->children[chn] = parse ## parser(state, ret))) { \
     iffail \
 } \
-} while(0)
+}
 
 /* require a parser succeed else return NULL */
 #define REQUIREP(chn, parser) REQUIREPO(chn, parser, { \
@@ -179,11 +180,11 @@ if (!(ret->children[chn] = parse ## parser(state, ret))) { \
 #define REQUIREPR(chn, parser) REQUIREPO(chn, parser, RESTORE)
 
 /* require a token be found else iffail */
-#define REQUIRETO(chn, toktype, iffail) do { \
+#define REQUIRETO(chn, toktype, iffail) { \
 if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
     iffail \
 } \
-} while (0)
+}
 
 /* require a token be found else return NULL */
 #define REQUIRET(chn, toktype) REQUIRETO(chn, toktype, { \
@@ -345,21 +346,28 @@ PARSER(PostfixExpression)
     Node *ret, *node, *node2;
     Token *tok;
 
+    node = NULL;
     if ((tok = expect(state, TOK_LPAREN))) {
         /* a compound literal */
         MKRETT(NODE_COMPOUND_LITERAL, 6);
-        REQUIREP(0, TypeName);
-        REQUIRET(1, TOK_LPAREN);
-        REQUIRET(2, TOK_LBRACE);
-        REQUIREP(3, InitializerList);
+#define RESTORE { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; }
+        REQUIREPR(0, TypeName);
+        REQUIRETR(1, TOK_RPAREN);
+        REQUIRETR(2, TOK_LBRACE);
+        REQUIREPR(3, InitializerList);
         if ((ret->children[4] = expectN(state, ret, TOK_COMMA))) {
-            REQUIRET(5, TOK_RBRACE);
+            REQUIRETR(5, TOK_RBRACE);
         } else {
-            REQUIRET(4, TOK_RBRACE);
+            REQUIRETR(4, TOK_RBRACE);
         }
+#undef RESTORE
         node = ret;
 
-    } else if (!(node = parsePrimaryExpression(state, parent))) {
+        notcompound: (void) 0;
+
+    }
+
+    if (!node && !(node = parsePrimaryExpression(state, parent))) {
         return NULL;
 
     }
@@ -791,10 +799,10 @@ static Node *parseDirectAbstractDeclaratorA1(ParseState *state, Node *parent, No
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 5);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIREPR(2, TypeQualifierListOpt);
     REQUIREPR(3, AssignmentExpressionOpt);
-    REQUIRETR(4, TOK_RBRACE);
+    REQUIRETR(4, TOK_RBRACKET);
     return ret;
 }
 
@@ -802,11 +810,11 @@ static Node *parseDirectAbstractDeclaratorA2(ParseState *state, Node *parent, No
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIRETR(2, TOK_static);
     REQUIREPR(3, TypeQualifierListOpt);
     REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACE);
+    REQUIRETR(5, TOK_RBRACKET);
     return ret;
 }
 
@@ -814,11 +822,11 @@ static Node *parseDirectAbstractDeclaratorA3(ParseState *state, Node *parent, No
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIREPR(2, TypeQualifierList);
     REQUIRETR(3, TOK_static);
     REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACE);
+    REQUIRETR(5, TOK_RBRACKET);
     return ret;
 }
 
@@ -826,9 +834,9 @@ static Node *parseDirectAbstractDeclaratorA4(ParseState *state, Node *parent, No
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 4);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIRETR(2, TOK_STAR);
-    REQUIRETR(3, TOK_RBRACE);
+    REQUIRETR(3, TOK_RBRACKET);
     return ret;
 }
 
@@ -1014,10 +1022,10 @@ static Node *parseDirectDeclaratorA1(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 5);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIREPR(2, TypeQualifierListOpt);
     REQUIREPR(3, AssignmentExpressionOpt);
-    REQUIRETR(4, TOK_RBRACE);
+    REQUIRETR(4, TOK_RBRACKET);
     return ret;
 }
 
@@ -1025,11 +1033,11 @@ static Node *parseDirectDeclaratorA2(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIRETR(2, TOK_static);
     REQUIREPR(3, TypeQualifierListOpt);
     REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACE);
+    REQUIRETR(5, TOK_RBRACKET);
     return ret;
 }
 
@@ -1037,11 +1045,11 @@ static Node *parseDirectDeclaratorA3(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIREPR(2, TypeQualifierList);
     REQUIRETR(3, TOK_static);
     REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACE);
+    REQUIRETR(5, TOK_RBRACKET);
     return ret;
 }
 
@@ -1049,10 +1057,10 @@ static Node *parseDirectDeclaratorA4(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 5);
-    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(1, TOK_LBRACKET);
     REQUIREPR(2, TypeQualifierListOpt);
     REQUIRETR(3, TOK_STAR);
-    REQUIRETR(4, TOK_RBRACE);
+    REQUIRETR(4, TOK_RBRACKET);
     return ret;
 }
 
@@ -1784,12 +1792,26 @@ Node *cparse(ScanState *state, char **error)
         ebuf.bufused += sprintf(ebuf.buf + ebuf.bufused,
                                 "At line %d column %d\n expected: ", (int) pState.el, (int) pState.ec);
 
+        /* remove redundant expected names */
+        for (i = 0; i < pState.eexpected.bufused; i++) {
+            size_t j;
+            int expi = pState.eexpected.buf[i];
+            for (j = i + 1; j < pState.eexpected.bufused; j++) {
+                if (expi == pState.eexpected.buf[j]) {
+                    pState.eexpected.buf[j] = TOK_FIRST;
+                }
+            }
+        }
+
         /* write out each of the expected names */
         for (i = 0; i < pState.eexpected.bufused; i++) {
             const char *tname;
-            if (i != 0) WRITE_ONE_BUFFER(ebuf, ',');
-            tname = tokenName(pState.eexpected.buf[i]);
-            WRITE_BUFFER(ebuf, tname, strlen(tname));
+            int ttype = pState.eexpected.buf[i];
+            if (ttype != TOK_FIRST) {
+                if (i != 0) WRITE_ONE_BUFFER(ebuf, ',');
+                tname = tokenName(ttype);
+                WRITE_BUFFER(ebuf, tname, strlen(tname));
+            }
         }
 
         WRITE_BUFFER(ebuf, "\n found: ", 9);
