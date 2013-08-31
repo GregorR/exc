@@ -24,6 +24,13 @@ decoration-open-cont:
 primary-expression:
     decoration-expression
 
+multiplicative-expression:
+    «cast-expression is replaced by decoration-op-expression»
+
+decoration-op-expression:
+    cast-expression
+    decoration-op-expression decoration-expression cast-expression
+
 decoration-expression:
     @ decoration-name decoration-open-opt decoration-sub-expression-opt
     /@ decoration-name decoration-open-opt decoration-sub-expression-opt @/

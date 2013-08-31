@@ -207,6 +207,35 @@ static Node *parse ## name(ParseState *state, Node *parent) { return NULL; }
 /***************************************************************
  * IDENTIFIERS/CONSTANTS                                       *
  ***************************************************************/
+PARSER(DecorationName)
+{
+    Node *ret;
+    Token *tok;
+
+    tok = scan(state);
+    switch (tok->type) {
+        case TOK_LPAREN:
+        case TOK_RPAREN:
+        case TOK_LBRACKET:
+        case TOK_RBRACKET:
+        case TOK_LBRACE:
+        case TOK_RBRACE:
+        case TOK_DECORATION:
+        case TOK_OPEN_DECORATION:
+        case TOK_CLOSE_DECORATION:
+        case TOK_TERM:
+            /* these tokens are NOT acceptable as decoration names */
+            pushToken(state, tok);
+            break;
+
+        default:
+            MKRETT(NODE_DECORATION_NAME, 0);
+            return ret;
+    }
+
+    return NULL;
+}
+
 PARSER(Identifier)
 {
     Node *ret = expectN(state, parent, TOK_ID);
@@ -330,6 +359,8 @@ PARSER(AssignmentExpression);
 PARSER(Expression);
 PARSER(TypeName);
 PARSER(InitializerList);
+PARSER(DecorationOpExpression);
+PARSER(DecorationExpression);
 
 COMMA_LIST(ArgumentExpressionList, NODE_ARGUMENT_EXPRESSION_LIST, AssignmentExpression)
 
@@ -513,10 +544,10 @@ PARSER(CastExpression)
         return node; \
     }
 
-BINARY_OP_START(MultiplicativeExpression, CastExpression)
-    BINARY_OP(TOK_STAR, NODE_MUL, CastExpression)
-    BINARY_OP(TOK_DIV, NODE_DIV, CastExpression)
-    BINARY_OP(TOK_MOD, NODE_MOD, CastExpression)
+BINARY_OP_START(MultiplicativeExpression, DecorationOpExpression)
+    BINARY_OP(TOK_STAR, NODE_MUL, DecorationOpExpression)
+    BINARY_OP(TOK_DIV, NODE_DIV, DecorationOpExpression)
+    BINARY_OP(TOK_MOD, NODE_MOD, DecorationOpExpression)
 BINARY_OP_END()
 
 BINARY_OP_START(AdditiveExpression, MultiplicativeExpression)
@@ -673,6 +704,7 @@ PARSER(PrimaryExpression)
     }
 
     if ((ret = parseGenericSelection(state, parent))) return ret;
+    if ((ret = parseDecorationExpression(state, parent))) return ret;
 
     return NULL;
 }
@@ -1757,6 +1789,140 @@ PARSER(Top)
     REQUIRET(1, TOK_TERM);
     return ret;
 }
+
+/***************************************************************
+ * DECORATION                                                  *
+ ***************************************************************/
+PARSER(DecorationOpenOpt);
+
+PARSER(DecorationSubExpression)
+{
+    Node *ret, *node, *node2;
+    Token *tok;
+
+    if (!(tok = expect(state, TOK_LBRACE))) return NULL;
+
+    MKRETT(NODE_DECORATION_SUB_EXPRESSION, 2);
+
+    /* expression form */
+    if ((node = parseExpressionOpt(state, ret))) {
+        if ((node2 = expectN(state, ret, TOK_RBRACE))) {
+            ret->children[0] = node;
+            ret->children[1] = node2;
+            return ret;
+        }
+        pushNode(state, node);
+        freeNode(node);
+    }
+
+    /* statement form */
+    if ((node = parseBlockItemList(state, ret))) {
+        ret->children[0] = node;
+        REQUIRET(1, TOK_RBRACE);
+        return ret;
+    }
+
+    /* failure form! */
+    pushNode(state, ret);
+    freeNode(ret);
+    return NULL;
+}
+OPT(DecorationSubExpression)
+
+PARSER(DecorationExpression)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_DECORATION))) {
+        MKRETT(NODE_DECORATION_EXPRESSION, 3);
+        REQUIREP(0, DecorationName);
+        REQUIREP(1, DecorationOpenOpt);
+        REQUIREP(2, DecorationSubExpressionOpt);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_OPEN_DECORATION))) {
+        MKRETT(NODE_DECORATION_EXPRESSION, 4);
+        REQUIREP(0, DecorationName);
+        REQUIREP(1, DecorationOpenOpt);
+        REQUIREP(2, DecorationSubExpressionOpt);
+        REQUIRET(3, TOK_CLOSE_DECORATION);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(DecorationOpExpression)
+{
+    Node *ret, *node, *node2;
+
+    if (!(node = parseCastExpression(state, parent))) return NULL;
+
+    while ((node2 = parseDecorationExpression(state, parent))) {
+        MKRETN2(NODE_DECORATION_OP, 3);
+        REQUIREPO(2, CastExpression, { RESTOREN(); break; });
+        node = ret;
+    }
+
+    return node;
+}
+
+PARSER(DecorationOpenCont)
+{
+    Node *ret, *node;
+    Token *tok;
+    struct Buffer_Nodep buf;
+    size_t i;
+    ssize_t depth = 0;
+
+    INIT_BUFFER(buf);
+
+    while (1) {
+        tok = scan(state); /* FIXME: NULL */
+        if (tok->type == TOK_LPAREN) {
+            depth++;
+
+        } else if (tok->type == TOK_RPAREN) {
+            if ((depth--) == 0) {
+                pushToken(state, tok);
+                break;
+            }
+
+        }
+
+        node = newNode(parent, NODE_TOK, tok, 0); /* FIXME: NULL */
+        WRITE_ONE_BUFFER(buf, node);
+    }
+
+    /* FXIME: NULL */
+    ret = newNode(parent, NODE_DECORATION_OPEN_CONT, NULL, buf.bufused);
+
+    for (i = 0; i < buf.bufused; i++) {
+        ret->children[i] = buf.buf[i];
+        buf.buf[i]->parent = ret;
+    }
+
+    return ret;
+}
+
+PARSER(DecorationOpen)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_LPAREN))) {
+        MKRETT(NODE_DECORATION_OPEN, 2);
+        REQUIREP(0, DecorationOpenCont);
+        REQUIRET(1, TOK_RPAREN);
+        return ret;
+    }
+
+    return NULL;
+}
+OPT(DecorationOpen)
+
 
 /***************************************************************
  * ENTRY POINT                                                 *
