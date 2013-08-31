@@ -82,7 +82,7 @@ static void unparseJSONPrime(struct Buffer_char *buf, Node *node)
             WRITE_ONE_BUFFER(*buf, '"');
         }
 
-        WRITE_ONE_BUFFER(*buf, ',');
+        WRITE_BUFFER(*buf, "},", 2);
     }
 
     WRITE_BUFFER(*buf, "\"type\":\"", 8);

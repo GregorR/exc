@@ -38,7 +38,7 @@ int main(int argc, char **argv)
             FREE_BUFFER(unparsed);
 
             unparsed = cunparseJSON(node);
-            fprintf(stderr, "%s\n", unparsed.buf);
+            printf("%s\n", unparsed.buf);
             FREE_BUFFER(unparsed);
 
             freeNode(node);

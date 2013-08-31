@@ -612,6 +612,7 @@ OPT(AssignmentExpression)
 BINARY_OP_START(Expression, AssignmentExpression);
     BINARY_OP(TOK_COMMA, NODE_COMMA, AssignmentExpression);
 BINARY_OP_END()
+OPT(Expression)
 
 PARSER(GenericAssociation)
 {
@@ -1516,6 +1517,246 @@ PARSER(Declaration)
     return parseStaticAssertDeclaration(state, parent);
 }
 
+/***************************************************************
+ * STATEMENTS                                                  *
+ ***************************************************************/
+PARSER(Statement);
+
+PARSER(JumpStatement)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_goto))) {
+        MKRETT(NODE_GOTO_STATEMENT, 2);
+        REQUIREP(0, Identifier);
+        REQUIRET(1, TOK_SEMICOLON);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_continue))) {
+        MKRETT(NODE_CONTINUE_STATEMENT, 1);
+        REQUIRET(0, TOK_SEMICOLON);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_break))) {
+        MKRETT(NODE_BREAK_STATEMENT, 1);
+        REQUIRET(0, TOK_SEMICOLON);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_return))) {
+        MKRETT(NODE_RETURN_STATEMENT, 2);
+        REQUIREP(0, ExpressionOpt);
+        REQUIRET(1, TOK_SEMICOLON);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(ForInitializer)
+{
+    Node *ret, *node;
+
+    /* declaration | expressionopt ; */
+    if ((ret = parseDeclaration(state, parent))) return ret;
+
+    if ((node = parseExpressionOpt(state, parent))) {
+        MKRETN(NODE_FOR_INITIALIZER, 2);
+        REQUIRET(1, TOK_SEMICOLON);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(IterationStatement)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_while))) {
+        MKRETT(NODE_WHILE_STATEMENT, 4);
+        REQUIRET(0, TOK_LPAREN);
+        REQUIREP(1, Expression);
+        REQUIRET(2, TOK_RPAREN);
+        REQUIREP(3, Statement);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_do))) {
+        MKRETT(NODE_DO_WHILE_STATEMENT, 6);
+        REQUIREP(0, Statement);
+        REQUIRET(1, TOK_while);
+        REQUIRET(2, TOK_LPAREN);
+        REQUIREP(3, Expression);
+        REQUIRET(4, TOK_RPAREN);
+        REQUIRET(5, TOK_SEMICOLON);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_for))) {
+        MKRETT(NODE_FOR_STATEMENT, 7);
+        REQUIRET(0, TOK_LPAREN);
+        REQUIREP(1, ForInitializer);
+        REQUIREP(2, ExpressionOpt);
+        REQUIRET(3, TOK_SEMICOLON);
+        REQUIREP(4, ExpressionOpt);
+        REQUIRET(5, TOK_RPAREN);
+        REQUIREP(6, Statement);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(SelectionStatement)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_if))) {
+        MKRETT(NODE_IF_STATEMENT, 6);
+        REQUIRET(0, TOK_LPAREN);
+        REQUIREP(1, Expression);
+        REQUIRET(2, TOK_RPAREN);
+        REQUIREP(3, Statement);
+
+        /* optional else clause */
+        if ((ret->children[4] = expectN(state, ret, TOK_else)))
+            REQUIREP(5, Statement);
+
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_switch))) {
+        MKRETT(NODE_SWITCH_STATEMENT, 4);
+        REQUIRET(0, TOK_LPAREN);
+        REQUIREP(1, Expression);
+        REQUIRET(2, TOK_RPAREN);
+        REQUIREP(3, Statement);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(ExpressionStatement)
+{
+    Node *ret, *node;
+
+    if ((node = parseExpressionOpt(state, parent))) {
+        MKRETN(NODE_EXPRESSION_STATEMENT, 2);
+        REQUIRET(1, TOK_SEMICOLON);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(BlockItem)
+{
+    Node *ret;
+    if ((ret = parseDeclaration(state, parent))) return ret;
+    if ((ret = parseStatement(state, parent))) return ret;
+    return NULL;
+}
+
+CONCAT_LIST(BlockItemList, NODE_BLOCK_ITEM_LIST, BlockItem)
+
+PARSER(CompoundStatement)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_LBRACE))) {
+        MKRETT(NODE_BLOCK, 2);
+        REQUIREP(0, BlockItemListOpt);
+        REQUIRET(1, TOK_RBRACE);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(LabeledStatement)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_ID))) {
+        MKRETT(NODE_LABELED_STATEMENT, 2);
+        REQUIRET(0, TOK_COLON);
+        REQUIREP(1, Statement);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_case))) {
+        MKRETT(NODE_CASE_STATEMENT, 3);
+        REQUIREP(0, ConditionalExpression);
+        REQUIRET(1, TOK_COLON);
+        REQUIREP(2, Statement);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_default))) {
+        MKRETT(NODE_DEFAULT_STATEMENT, 2);
+        REQUIRET(0, TOK_COLON);
+        REQUIREP(1, Statement);
+        return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(Statement)
+{
+    Node *ret;
+    if ((ret = parseLabeledStatement(state, parent))) return ret;
+    if ((ret = parseCompoundStatement(state, parent))) return ret;
+    if ((ret = parseExpressionStatement(state, parent))) return ret;
+    if ((ret = parseSelectionStatement(state, parent))) return ret;
+    if ((ret = parseIterationStatement(state, parent))) return ret;
+    if ((ret = parseJumpStatement(state, parent))) return ret;
+    return NULL;
+}
+
+/***************************************************************
+ * TRANSLATION UNIT                                            *
+ ***************************************************************/
+CONCAT_LIST(DeclarationList, NODE_DECLARATION_LIST, Declaration)
+
+PARSER(FunctionDefinition)
+{
+    Node *ret, *node;
+    if (!(node = parseDeclarationSpecifiers(state, parent))) return NULL;
+    MKRETN(NODE_FUNCTION_DEFINITION, 4);
+    REQUIREP(1, Declarator);
+    REQUIREP(2, DeclarationListOpt);
+    REQUIREP(3, CompoundStatement);
+    return ret;
+}
+
+PARSER(ExternalDeclaration)
+{
+    Node *ret;
+    if ((ret = parseFunctionDefinition(state, parent))) return ret;
+    if ((ret = parseDeclaration(state, parent))) return ret;
+    return NULL;
+}
+
+CONCAT_LIST(TranslationUnit, NODE_TRANSLATION_UNIT, ExternalDeclaration)
+
+PARSER(Top)
+{
+    Node *ret, *node;
+    if (!(node = parseTranslationUnit(state, parent))) return NULL;
+    MKRETN(NODE_FILE, 2);
+    REQUIRET(1, TOK_TERM);
+    return ret;
+}
 
 /***************************************************************
  * ENTRY POINT                                                 *
@@ -1531,8 +1772,7 @@ Node *cparse(ScanState *state, char **error)
     pState.eidx = pState.el = pState.ec = 0;
     INIT_BUFFER(pState.eexpected);
 
-    /* FIXME: obviously this would refer to the top-level parser, not expression */
-    ret = parseDeclaration(&pState, NULL);
+    ret = parseTop(&pState, NULL);
 
     if (!ret) {
         /* failed to parse, find out why */
