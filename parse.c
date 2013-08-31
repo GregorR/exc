@@ -11,6 +11,16 @@ Node *newNode(Node *parent, int type, Token *tok, size_t children)
     return ret;
 }
 
+void freeNode(Node *node)
+{
+    size_t i;
+    for (i = 0; node->children[i]; i++)
+        freeNode(node->children[i]);
+    if (node->tok)
+        freeToken(node->tok);
+    free(node);
+}
+
 static Token *scan(ParseState *state)
 {
     if (state->buf.bufused) {
@@ -18,7 +28,7 @@ static Token *scan(ParseState *state)
         return state->buf.buf[state->buf.bufused];
     }
 
-    return cscan(&state->scanState);
+    return cscan(state->scanState);
 }
 
 static void pushToken(ParseState *state, Token *tok)
@@ -114,6 +124,18 @@ if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
     return NULL; \
 } \
 } while (0)
+
+/* temporary */
+#define FAKEPARSER(name) \
+static Node *name(ParseState *state, Node *parent) { return NULL; }
+
+FAKEPARSER(parseTypeName)
+FAKEPARSER(parseInitializerList)
+FAKEPARSER(parseDirectDeclarator)
+FAKEPARSER(parseEnumerationConstant)
+FAKEPARSER(parsePointer)
+FAKEPARSER(parseStaticAssertDeclaration)
+FAKEPARSER(parseInitializer)
 
 /***************************************************************
  * IDENTIFIERS/CONSTANTS                                       *
@@ -213,12 +235,16 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
 
     if ((tok = expect(state, TOK_LPAREN))) {
         /* a compound literal */
-        MKRETT(NODE_COMPOUND_LITERAL, 5);
+        MKRETT(NODE_COMPOUND_LITERAL, 6);
         REQUIREP(0, parseTypeName);
         REQUIRET(1, TOK_LPAREN);
         REQUIRET(2, TOK_LBRACE);
-        REQUIREP(3, parseInitializerListElision);
-        REQUIRET(4, TOK_RBRACE);
+        REQUIREP(3, parseInitializerList);
+        if ((ret->children[4] = expectN(state, ret, TOK_COMMA))) {
+            REQUIRET(5, TOK_RBRACE);
+        } else {
+            REQUIRET(4, TOK_RBRACE);
+        }
         node = ret;
 
     } else if (!(node = parsePrimaryExpression(state, parent))) {
@@ -360,17 +386,18 @@ static Node *parseCastExpression(ParseState *state, Node *parent)
         Node *ret, *node, *node2; \
         if (!(node = nextNode(state, parent))) return NULL; \
         while (1) {
+#define BINARY_OP(reqTok, genNode, nextNode) \
+            if ((node2 = expectN(state, parent, reqTok))) { \
+                MKRETN2(genNode, 3); \
+                REQUIREP(2, nextNode); \
+                node = ret; \
+                continue; \
+            } 
 #define BINARY_OP_END() \
             break; \
         } \
         return node; \
     }
-#define BINARY_OP(reqTok, genNode, nextNode) \
-    if ((node2 = expectN(state, parent, reqTok))) { \
-        MKRETN2(genNode, 3); \
-        REQUIREP(2, nextNode); \
-        continue; \
-    } \
 
 BINARY_OP_START(parseMultiplicativeExpression, parseCastExpression)
     BINARY_OP(TOK_STAR, NODE_MUL, parseCastExpression)
@@ -444,7 +471,7 @@ static Node *parseAssignmentExpression(ParseState *state, Node *parent)
 
     if ((node = parseUnaryExpression(state, parent))) {
         tok = scan(state);
-        if (tok->type <= TOK_ASG_START && tok->type >= TOK_ASG_END) {
+        if (tok->type <= TOK_ASG_START || tok->type >= TOK_ASG_END) {
             /* not an assignment expression */
             pushToken(state, tok);
             pushNode(state, node);
@@ -540,6 +567,18 @@ static Node *parsePrimaryExpression(ParseState *state, Node *parent)
  **************************************************************/
 static Node *parseTypeSpecifier(ParseState *state, Node *parent);
 
+static Node *parseDeclarator(ParseState *state, Node *parent)
+{
+    Node *ret, *node;
+
+    if (!(node = parsePointer(state, parent))) return NULL;
+
+    MKRETN(NODE_DECLARATOR, 2);
+    REQUIREP(1, parseDirectDeclarator);
+
+    return ret;
+}
+
 static Node *parseAlignmentSpecifier(ParseState *state, Node *parent)
 {
     Node *ret, *node;
@@ -551,7 +590,7 @@ static Node *parseAlignmentSpecifier(ParseState *state, Node *parent)
     REQUIRET(0, TOK_LPAREN);
 
     if (!(node = parseTypeName(state, ret)) &&
-        !(node = parseConstantExpression(state, ret))) {
+        !(node = parseConditionalExpression(state, ret))) {
         pushNode(state, ret);
         freeNode(ret);
         return NULL;
@@ -668,7 +707,7 @@ static Node *parseStructDeclarator(ParseState *state, Node *parent)
             REQUIREP(2, parseConstant);
             return ret;
         }
-        return ret;
+        return node;
 
     } else if ((tok = expect(state, TOK_COLON))) {
         MKRETT(NODE_BITFIELD_PADDING, 1);
@@ -919,4 +958,24 @@ static Node *parseDeclaration(ParseState *state, Node *parent)
     }
 
     return parseStaticAssertDeclaration(state, parent);
+}
+
+
+/***************************************************************
+ * ENTRY POINT                                                 *
+ ***************************************************************/
+Node *cparse(ScanState *state)
+{
+    ParseState pState;
+    Node *ret;
+
+    pState.scanState = state;
+    INIT_BUFFER(pState.buf);
+
+    /* FIXME: obviously this would refer to the top-level parser, not expression */
+    ret = parseExpression(&pState, NULL);
+
+    FREE_BUFFER(pState.buf);
+
+    return ret;
 }

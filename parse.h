@@ -118,12 +118,16 @@ enum Nodes {
     NODE_FUNCTION_SPECIFIER,
     NODE_ALIGNMENT_SPECIFIER,
 
+    NODE_DECLARATOR,
+
     NODE_LAST
 };
 
 typedef struct ParseState_ {
-    ScanState scanState;
+    ScanState *scanState;
     struct Buffer_Tokenp buf;
 } ParseState;
+
+Node *cparse(ScanState *state);
 
 #endif

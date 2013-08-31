@@ -2,10 +2,16 @@ CC=gcc
 CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic \
  -Wno-implicit-function-declaration -Wno-unused-function
 
-SRC=parse.c scan.c
+SRC=main.c parse.c scan.c unparse.c
 OBJS=$(SRC:.c=.o)
 
-all: $(OBJS)
+all: exc
+
+exc: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o exc
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS)
+	rm -f exc $(OBJS)

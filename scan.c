@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 700 /* for strndup */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -52,6 +53,7 @@ static void updateIdx(ScanState *state, size_t ni)
                 state->c++;
         }
     }
+    state->idx = ni;
 }
 
 static char *getWhite(ScanState *state)
@@ -74,6 +76,8 @@ static char *getWhite(ScanState *state)
                 for (i++; buf->buf[i+1] && (buf->buf[i] != '*' || buf->buf[i+1] != '/'); i++);
             }
         } else i++;
+
+        c = buf->buf[i];
     }
 
     updateIdx(state, i);
