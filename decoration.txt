@@ -1,0 +1,50 @@
+The fundamental addition that exc makes to C's grammar is decorations.
+Decorations are a sort of "escape" from C code that has no defined semantics.
+Instead, modules loaded by exc transform the decorations into regular C code
+before it is compiled.
+
+Decorations add ambiguity to the C grammar. Where ambiguous, optional parts of
+the decoration are preferred to outer productions (i.e., the same rule used by
+all other ambiguities in C)
+
+To support decorations, the C grammar is extended as follows:
+
+punctuator:
+    @ /@ @/
+
+decoration-name:
+    «any token other than (, ), {, }, [, ], @, /@ or @/»
+
+decoration-open:
+    ( decoration-open-cont )
+
+decoration-open-cont:
+    «any sequence of tokens with matching ()s»
+
+primary-expression:
+    decoration-expression
+
+decoration-expression:
+    @ decoration-name decoration-open-opt decoration-sub-expression-opt
+    /@ decoration-name decoration-open-opt decoration-sub-expression-opt @/
+
+decoration-sub-expression:
+    { expression-opt }
+    { block-item-list }
+
+declaration:
+    decoration-declaration declaration
+    decoration-declaration ;
+
+declaration-specifiers:
+    declaration-specifiers decoration-declaration
+
+specifier-qualifier-list:
+    specifier-qualifier-list decoration-declaration
+
+decoration-declaration:
+    @ decoration-name decoration-open-opt decoration-sub-declaration-specifiers-opt
+    /@ decoration-name decoration-open-opt decoration-sub-declaration-specifiers-opt @/
+
+decoration-sub-declaration-specifiers:
+    { declaration-specifiers-opt }
