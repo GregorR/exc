@@ -2,6 +2,7 @@
 
 BUFFER(Nodep, Node *);
 
+/* create a node */
 Node *newNode(Node *parent, int type, Token *tok, size_t children)
 {
     Node *ret = calloc(sizeof(Node) + children * sizeof(Node *), 1);
@@ -11,6 +12,7 @@ Node *newNode(Node *parent, int type, Token *tok, size_t children)
     return ret;
 }
 
+/* free a node and all the tokens and nodes under it */
 void freeNode(Node *node)
 {
     size_t i;
@@ -21,6 +23,7 @@ void freeNode(Node *node)
     free(node);
 }
 
+/* scan for a token, with pushback support */
 static Token *scan(ParseState *state)
 {
     if (state->buf.bufused) {
@@ -31,11 +34,13 @@ static Token *scan(ParseState *state)
     return cscan(state->scanState);
 }
 
+/* push a token back */
 static void pushToken(ParseState *state, Token *tok)
 {
     WRITE_ONE_BUFFER(state->buf, tok);
 }
 
+/* push a whole node worth of tokens back */
 static void pushNode(ParseState *state, Node *node)
 {
     ssize_t i;
@@ -48,6 +53,7 @@ static void pushNode(ParseState *state, Node *node)
     }
 }
 
+/* expect a given token (return the token or push back and return NULL) */
 static Token *expect(ParseState *state, int type)
 {
     Token *ret = scan(state);
@@ -58,6 +64,7 @@ static Token *expect(ParseState *state, int type)
     return NULL;
 }
 
+/* expect a given token, as a node */
 static Node *expectN(ParseState *state, Node *parent, int type)
 {
     Token *tok;
@@ -75,6 +82,7 @@ static Node *expectN(ParseState *state, Node *parent, int type)
     return NULL;
 }
 
+/* prepare ret with a single node `node` */
 #define MKRETN(nodeType, chn) do { \
     ret = newNode(parent, nodeType, NULL, chn); \
     if (!ret) { \
@@ -86,6 +94,7 @@ static Node *expectN(ParseState *state, Node *parent, int type)
     node->parent = ret; \
 } while (0)
 
+/* prepare ret with nodes `node` and `node2` */
 #define MKRETN2(nodeType, chn) do { \
     ret = newNode(parent, nodeType, NULL, chn); \
     if (!ret) { \
@@ -101,6 +110,7 @@ static Node *expectN(ParseState *state, Node *parent, int type)
     node2->parent = ret; \
 } while (0)
 
+/* prepare ret with token `tok` */
 #define MKRETT(nodeType, chn) do { \
     ret = newNode(parent, nodeType, tok, chn); \
     if (!ret) { \
@@ -109,12 +119,15 @@ static Node *expectN(ParseState *state, Node *parent, int type)
     } \
 } while (0)
 
+/* shift the first child off of `ret` (usually to restore it before
+ * pushNode(ret)) */
 #define SHIFTRET() do { \
     size_t sri_; \
     for (sri_ = 0; ret->children[sri_]; sri_++) \
         ret->children[sri_] = ret->children[sri_+1]; \
 } while (0)
 
+/* restore `node` from ret->children[0] and push/delete node */
 #define RESTOREN() do { \
     node = ret->children[0]; \
     node->parent = parent; \
@@ -123,71 +136,77 @@ static Node *expectN(ParseState *state, Node *parent, int type)
     freeNode(ret); \
 } while (0)
 
+/* restore `tok` from ret->tok and push/delete node */
 #define RESTORET() do { \
-    tok = ret->children[0]->tok; \
-    ret->children[0]->tok = NULL; \
+    tok = ret->tok; \
+    ret->tok = NULL; \
     pushNode(state, ret); \
     freeNode(ret); \
 } while (0)
 
+/* require a parser succeed, else iffail */
 #define REQUIREPO(chn, parser, iffail) do { \
-if (!(ret->children[chn] = parser(state, ret))) { \
+if (!(ret->children[chn] = parse ## parser(state, ret))) { \
     iffail \
 } \
 } while(0)
 
+/* require a parser succeed else return NULL */
 #define REQUIREP(chn, parser) REQUIREPO(chn, parser, { \
     pushNode(state, ret); \
     freeNode(ret); \
     return NULL; \
 })
 
+/* require a parser succeed else RESTORE */
 #define REQUIREPR(chn, parser) REQUIREPO(chn, parser, RESTORE)
 
+/* require a token be found else iffail */
 #define REQUIRETO(chn, toktype, iffail) do { \
 if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
     iffail \
 } \
 } while (0)
 
+/* require a token be found else return NULL */
 #define REQUIRET(chn, toktype) REQUIRETO(chn, toktype, { \
     pushNode(state, ret); \
     freeNode(ret); \
     return NULL; \
 })
 
+/* require a token be found else RESTORE */
 #define REQUIRETR(chn, toktype) REQUIRETO(chn, toktype, RESTORE)
 
+/* type for a parser */
+#define PARSER(name) static Node *parse ## name(ParseState *state, Node *parent)
+
+/* make an optional parser based on a parser `name` */
 #define OPT(name) \
-static Node *name ## Opt(ParseState *state, Node *parent) \
+PARSER(name ## Opt) \
 { \
     Node *ret; \
-    if ((ret = name(state, parent))) return ret; \
+    if ((ret = parse ## name(state, parent))) return ret; \
     return newNode(parent, NODE_NIL, NULL, 0); \
 }
 
 /* temporary */
 #define FAKEPARSER(name) \
-static Node *name(ParseState *state, Node *parent) { return NULL; }
-
-FAKEPARSER(parseInitializerList)
-FAKEPARSER(parseEnumerationConstant)
-FAKEPARSER(parseStaticAssertDeclaration)
-FAKEPARSER(parseInitializer)
+static Node *parse ## name(ParseState *state, Node *parent) { return NULL; }
 
 /***************************************************************
  * IDENTIFIERS/CONSTANTS                                       *
  ***************************************************************/
-static Node *parseIdentifier(ParseState *state, Node *parent)
+PARSER(Identifier)
 {
     Node *ret = expectN(state, parent, TOK_ID);
     if (!ret) return NULL;
     ret->type = NODE_ID;
     return ret;
 }
-OPT(parseIdentifier)
+OPT(Identifier)
 
-static Node *parseConstant(ParseState *state, Node *parent)
+PARSER(Constant)
 {
     Node *ret;
 
@@ -215,11 +234,11 @@ static Node *parseConstant(ParseState *state, Node *parent)
 }
 
 #define PARSER_LIST(parserName) \
-static Node *parserName(ParseState *state, Node *parent) { return parserName ## L(state, parent, 1); } \
-static Node *parserName ## Opt(ParseState *state, Node *parent) { return parserName ## L(state, parent, 0); }
+PARSER(parserName) { return parse ## parserName ## L(state, parent, 1); } \
+PARSER(parserName ## Opt) { return parse ## parserName ## L(state, parent, 0); }
 
 #define COMMA_LIST(parserName, genNode, nextParser) \
-static Node *parserName ## L(ParseState *state, Node *parent, int need1) \
+static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
 { \
     Node *ret, *node; \
     struct Buffer_Nodep buf; \
@@ -227,13 +246,13 @@ static Node *parserName ## L(ParseState *state, Node *parent, int need1) \
     \
     INIT_BUFFER(buf); \
     \
-    if ((node = nextParser(state, parent))) { \
+    if ((node = parse ## nextParser(state, parent))) { \
         WRITE_ONE_BUFFER(buf, node); \
         \
         while ((node = expectN(state, parent, TOK_COMMA))) { \
             WRITE_ONE_BUFFER(buf, node); \
             \
-            if (!(node = nextParser(state, parent))) { \
+            if (!(node = parse ## nextParser(state, parent))) { \
                 node = buf.buf[buf.bufused-1]; \
                 buf.bufused--; \
                 pushNode(state, node); \
@@ -263,18 +282,48 @@ static Node *parserName ## L(ParseState *state, Node *parent, int need1) \
 } \
 PARSER_LIST(parserName)
 
+#define CONCAT_LIST(parserName, genNode, nextParser) \
+static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
+{ \
+    Node *ret, *node; \
+    struct Buffer_Nodep buf; \
+    size_t i; \
+    \
+    INIT_BUFFER(buf); \
+    \
+    while ((node = parse ## nextParser(state, parent))) { \
+        WRITE_ONE_BUFFER(buf, node); \
+    } \
+    \
+    if (need1 && buf.bufused == 0) { \
+        FREE_BUFFER(buf); \
+        return NULL; \
+    } \
+    \
+    ret = newNode(parent, genNode, NULL, buf.bufused); \
+    for (i = 0; i < buf.bufused; i++) { \
+        ret->children[i] = buf.buf[i]; \
+        buf.buf[i]->parent = ret; \
+    } \
+    \
+    return ret; \
+} \
+PARSER_LIST(parserName)
+
+
 /***************************************************************
  * EXPRESSIONS                                                 *
  ***************************************************************/
-static Node *parsePrimaryExpression(ParseState *state, Node *parent);
-static Node *parseCastExpression(ParseState *state, Node *parent);
-static Node *parseAssignmentExpression(ParseState *state, Node *parent);
-static Node *parseExpression(ParseState *state, Node *parent);
-static Node *parseTypeName(ParseState *state, Node *parent);
+PARSER(PrimaryExpression);
+PARSER(CastExpression);
+PARSER(AssignmentExpression);
+PARSER(Expression);
+PARSER(TypeName);
+PARSER(InitializerList);
 
-COMMA_LIST(parseArgumentExpressionList, NODE_ARGUMENT_EXPRESSION_LIST, parseAssignmentExpression)
+COMMA_LIST(ArgumentExpressionList, NODE_ARGUMENT_EXPRESSION_LIST, AssignmentExpression)
 
-static Node *parsePostfixExpression(ParseState *state, Node *parent)
+PARSER(PostfixExpression)
 {
     Node *ret, *node, *node2;
     Token *tok;
@@ -282,10 +331,10 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK_LPAREN))) {
         /* a compound literal */
         MKRETT(NODE_COMPOUND_LITERAL, 6);
-        REQUIREP(0, parseTypeName);
+        REQUIREP(0, TypeName);
         REQUIRET(1, TOK_LPAREN);
         REQUIRET(2, TOK_LBRACE);
-        REQUIREP(3, parseInitializerList);
+        REQUIREP(3, InitializerList);
         if ((ret->children[4] = expectN(state, ret, TOK_COMMA))) {
             REQUIRET(5, TOK_RBRACE);
         } else {
@@ -302,7 +351,7 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
 #define RESTORE { RESTOREN(); break; }
         if ((node2 = expectN(state, parent, TOK_LBRACKET))) {
             MKRETN2(NODE_INDEX, 4);
-            REQUIREPR(2, parseExpression);
+            REQUIREPR(2, Expression);
             REQUIRETR(3, TOK_RBRACKET);
             node = ret;
             continue;
@@ -310,7 +359,7 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
 
         if ((node2 = expectN(state, parent, TOK_LPAREN))) {
             MKRETN2(NODE_CALL, 4);
-            REQUIREPR(2, parseArgumentExpressionListOpt);
+            REQUIREPR(2, ArgumentExpressionListOpt);
             REQUIRETR(3, TOK_RPAREN);
             node = ret;
             continue;
@@ -349,7 +398,7 @@ static Node *parsePostfixExpression(ParseState *state, Node *parent)
     return node;
 }
 
-static Node *parseUnaryTypeExpression(ParseState *state, Node *parent)
+PARSER(UnaryTypeExpression)
 {
     Node *ret;
     Token *tok;
@@ -357,7 +406,7 @@ static Node *parseUnaryTypeExpression(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK_sizeof))) {
         MKRETT(NODE_SIZEOF_TYPE, 3);
         REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, parseTypeName);
+        REQUIREP(1, TypeName);
         REQUIRET(2, TOK_RPAREN);
         return ret;
     }
@@ -365,7 +414,7 @@ static Node *parseUnaryTypeExpression(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK__Alignof))) {
         MKRETT(NODE_ALIGNOF, 3);
         REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, parseTypeName);
+        REQUIREP(1, TypeName);
         REQUIRET(2, TOK_RPAREN);
         return ret;
     }
@@ -373,7 +422,7 @@ static Node *parseUnaryTypeExpression(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseUnaryExpression(ParseState *state, Node *parent)
+PARSER(UnaryExpression)
 {
     Node *ret;
     Token *tok;
@@ -383,7 +432,7 @@ static Node *parseUnaryExpression(ParseState *state, Node *parent)
 #define UNARY_OP(reqTok, genNode) do { \
     if ((tok = expect(state, reqTok))) { \
         MKRETT(genNode, 1); \
-        REQUIREPO(0, parseUnaryExpression, { pushNode(state, ret); freeNode(ret); break; }); \
+        REQUIREPO(0, UnaryExpression, { pushNode(state, ret); freeNode(ret); break; }); \
         return ret; \
     } \
 } while (0);
@@ -404,23 +453,23 @@ static Node *parseUnaryExpression(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseCastTypeExpression(ParseState *state, Node *parent)
+PARSER(CastTypeExpression)
 {
     Node *ret;
     Token *tok;
 
     if ((tok = expect(state, TOK_LPAREN))) {
         MKRETT(NODE_CAST, 3);
-        REQUIREP(0, parseTypeName);
+        REQUIREP(0, TypeName);
         REQUIRET(1, TOK_RPAREN);
-        REQUIREP(2, parseCastExpression);
+        REQUIREP(2, CastExpression);
         return ret;
     }
 
     return NULL;
 }
 
-static Node *parseCastExpression(ParseState *state, Node *parent)
+PARSER(CastExpression)
 {
     Node *ret;
     if ((ret = parseCastTypeExpression(state, parent))) return ret;
@@ -429,10 +478,10 @@ static Node *parseCastExpression(ParseState *state, Node *parent)
 }
 
 #define BINARY_OP_START(name, nextNode) \
-    static Node *name(ParseState *state, Node *parent) \
+    PARSER(name) \
     { \
         Node *ret, *node, *node2; \
-        if (!(node = nextNode(state, parent))) return NULL; \
+        if (!(node = parse ## nextNode(state, parent))) return NULL; \
         while (1) {
 #define BINARY_OP(reqTok, genNode, nextNode) \
             if ((node2 = expectN(state, parent, reqTok))) { \
@@ -447,55 +496,55 @@ static Node *parseCastExpression(ParseState *state, Node *parent)
         return node; \
     }
 
-BINARY_OP_START(parseMultiplicativeExpression, parseCastExpression)
-    BINARY_OP(TOK_STAR, NODE_MUL, parseCastExpression)
-    BINARY_OP(TOK_DIV, NODE_DIV, parseCastExpression)
-    BINARY_OP(TOK_MOD, NODE_MOD, parseCastExpression)
+BINARY_OP_START(MultiplicativeExpression, CastExpression)
+    BINARY_OP(TOK_STAR, NODE_MUL, CastExpression)
+    BINARY_OP(TOK_DIV, NODE_DIV, CastExpression)
+    BINARY_OP(TOK_MOD, NODE_MOD, CastExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseAdditiveExpression, parseMultiplicativeExpression)
-    BINARY_OP(TOK_PLUS, NODE_ADD, parseMultiplicativeExpression)
-    BINARY_OP(TOK_MINUS, NODE_SUB, parseMultiplicativeExpression)
+BINARY_OP_START(AdditiveExpression, MultiplicativeExpression)
+    BINARY_OP(TOK_PLUS, NODE_ADD, MultiplicativeExpression)
+    BINARY_OP(TOK_MINUS, NODE_SUB, MultiplicativeExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseShiftExpression, parseAdditiveExpression)
-    BINARY_OP(TOK_SHL, NODE_SHL, parseAdditiveExpression)
-    BINARY_OP(TOK_SHR, NODE_SHR, parseAdditiveExpression)
+BINARY_OP_START(ShiftExpression, AdditiveExpression)
+    BINARY_OP(TOK_SHL, NODE_SHL, AdditiveExpression)
+    BINARY_OP(TOK_SHR, NODE_SHR, AdditiveExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseRelationalExpression, parseShiftExpression)
-    BINARY_OP(TOK_LT, NODE_LT, parseShiftExpression)
-    BINARY_OP(TOK_GT, NODE_GT, parseShiftExpression)
-    BINARY_OP(TOK_LTE, NODE_LTE, parseShiftExpression)
-    BINARY_OP(TOK_GTE, NODE_GTE, parseShiftExpression)
+BINARY_OP_START(RelationalExpression, ShiftExpression)
+    BINARY_OP(TOK_LT, NODE_LT, ShiftExpression)
+    BINARY_OP(TOK_GT, NODE_GT, ShiftExpression)
+    BINARY_OP(TOK_LTE, NODE_LTE, ShiftExpression)
+    BINARY_OP(TOK_GTE, NODE_GTE, ShiftExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseEqualityExpression, parseRelationalExpression)
-    BINARY_OP(TOK_EQ, NODE_EQ, parseRelationalExpression)
-    BINARY_OP(TOK_NEQ, NODE_NEQ, parseRelationalExpression)
+BINARY_OP_START(EqualityExpression, RelationalExpression)
+    BINARY_OP(TOK_EQ, NODE_EQ, RelationalExpression)
+    BINARY_OP(TOK_NEQ, NODE_NEQ, RelationalExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseBAndExpression, parseEqualityExpression)
-    BINARY_OP(TOK_AND, NODE_BAND, parseEqualityExpression)
+BINARY_OP_START(BAndExpression, EqualityExpression)
+    BINARY_OP(TOK_AND, NODE_BAND, EqualityExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseBXorExpression, parseBAndExpression)
-    BINARY_OP(TOK_BXOR, NODE_BXOR, parseBAndExpression)
+BINARY_OP_START(BXorExpression, BAndExpression)
+    BINARY_OP(TOK_BXOR, NODE_BXOR, BAndExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseBOrExpression, parseBXorExpression)
-    BINARY_OP(TOK_BOR, NODE_BOR, parseBXorExpression)
+BINARY_OP_START(BOrExpression, BXorExpression)
+    BINARY_OP(TOK_BOR, NODE_BOR, BXorExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseAndExpression, parseBOrExpression)
-    BINARY_OP(TOK_ANDAND, NODE_AND, parseBOrExpression)
+BINARY_OP_START(AndExpression, BOrExpression)
+    BINARY_OP(TOK_ANDAND, NODE_AND, BOrExpression)
 BINARY_OP_END()
 
-BINARY_OP_START(parseOrExpression, parseAndExpression)
-    BINARY_OP(TOK_OROR, NODE_OR, parseAndExpression)
+BINARY_OP_START(OrExpression, AndExpression)
+    BINARY_OP(TOK_OROR, NODE_OR, AndExpression)
 BINARY_OP_END()
 
-static Node *parseConditionalExpression(ParseState *state, Node *parent)
+PARSER(ConditionalExpression)
 {
     Node *ret, *node, *node2;
 
@@ -504,9 +553,9 @@ static Node *parseConditionalExpression(ParseState *state, Node *parent)
     if ((node2 = expectN(state, parent, TOK_HOOK))) {
         MKRETN2(NODE_CONDITIONAL, 5);
 #define RESTORE { RESTOREN(); return node; }
-        REQUIREPR(2, parseExpression);
+        REQUIREPR(2, Expression);
         REQUIRETR(3, TOK_COLON);
-        REQUIREPR(4, parseConditionalExpression);
+        REQUIREPR(4, ConditionalExpression);
 #undef RESTORE
         return ret;
     }
@@ -514,7 +563,7 @@ static Node *parseConditionalExpression(ParseState *state, Node *parent)
     return node;
 }
 
-static Node *parseAssignmentExpression(ParseState *state, Node *parent)
+PARSER(AssignmentExpression)
 {
     Node *ret, *node;
     Token *tok;
@@ -535,19 +584,19 @@ static Node *parseAssignmentExpression(ParseState *state, Node *parent)
         ret->children[1] = node;
         if (tok->type > TOK_ASG)
             ret->type = NODE_RASG;
-        REQUIREPO(2, parseAssignmentExpression, { RESTOREN(); return node; });
+        REQUIREPO(2, AssignmentExpression, { RESTOREN(); return node; });
         return ret;
     }
 
     return parseConditionalExpression(state, parent);
 }
-OPT(parseAssignmentExpression)
+OPT(AssignmentExpression)
 
-BINARY_OP_START(parseExpression, parseAssignmentExpression);
-    BINARY_OP(TOK_COMMA, NODE_COMMA, parseAssignmentExpression);
+BINARY_OP_START(Expression, AssignmentExpression);
+    BINARY_OP(TOK_COMMA, NODE_COMMA, AssignmentExpression);
 BINARY_OP_END()
 
-static Node *parseGenericAssociation(ParseState *state, Node *parent)
+PARSER(GenericAssociation)
 {
     Node *ret, *node;
     Token *tok;
@@ -555,23 +604,23 @@ static Node *parseGenericAssociation(ParseState *state, Node *parent)
     if ((node = parseTypeName(state, parent))) {
         MKRETN(NODE_GENERIC_ASSOCIATION, 3);
         REQUIRET(1, TOK_COLON);
-        REQUIREP(2, parseAssignmentExpression);
+        REQUIREP(2, AssignmentExpression);
         return ret;
     }
 
     if ((tok = expect(state, TOK_default))) {
         MKRETT(NODE_GENERIC_ASSOCIATION_DEFAULT, 2);
         REQUIRET(0, TOK_COLON);
-        REQUIREP(1, parseAssignmentExpression);
+        REQUIREP(1, AssignmentExpression);
         return ret;
     }
 
     return NULL;
 }
 
-COMMA_LIST(parseGenericAssocList, NODE_GENERIC_ASSOC_LIST, parseGenericAssociation)
+COMMA_LIST(GenericAssocList, NODE_GENERIC_ASSOC_LIST, GenericAssociation)
 
-static Node *parseGenericSelection(ParseState *state, Node *parent)
+PARSER(GenericSelection)
 {
     Node *ret;
     Token *tok;
@@ -579,9 +628,9 @@ static Node *parseGenericSelection(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK__Generic))) {
         MKRETT(NODE_GENERIC_SELECTION, 5);
         REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, parseAssignmentExpression);
+        REQUIREP(1, AssignmentExpression);
         REQUIRET(2, TOK_COMMA);
-        REQUIREP(3, parseGenericAssocList);
+        REQUIREP(3, GenericAssocList);
         REQUIRET(4, TOK_RPAREN);
         return ret;
     }
@@ -589,7 +638,7 @@ static Node *parseGenericSelection(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parsePrimaryExpression(ParseState *state, Node *parent)
+PARSER(PrimaryExpression)
 {
     Node *ret;
     Token *tok;
@@ -600,7 +649,7 @@ static Node *parsePrimaryExpression(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK_LPAREN))) {
         /* parenthesized expression */
         MKRETT(NODE_PAREN, 2);
-        REQUIREP(0, parseExpression);
+        REQUIREP(0, Expression);
         REQUIRET(1, TOK_RPAREN);
         return ret;
     }
@@ -613,25 +662,118 @@ static Node *parsePrimaryExpression(ParseState *state, Node *parent)
 /***************************************************************
  * DECLARATIONS                                                *
  **************************************************************/
-static Node *parseTypeSpecifier(ParseState *state, Node *parent);
-static Node *parseDeclarator(ParseState *state, Node *parent);
-static Node *parseTypeQualifier(ParseState *state, Node *parent);
-static Node *parseAbstractDeclarator(ParseState *state, Node *parent);
-static Node *parsePointerOpt(ParseState *state, Node *parent);
-static Node *parseSpecifierQualifierList(ParseState *state, Node *parent);
-static Node *parseParameterTypeListOpt(ParseState *state, Node *parent);
-static Node *parseDeclarationSpecifiers(ParseState *state, Node *parent);
-static Node *parseTypeQualifierList(ParseState *state, Node *parent);
-static Node *parseTypeQualifierListOpt(ParseState *state, Node *parent);
+PARSER(TypeSpecifier);
+PARSER(Declarator);
+PARSER(TypeQualifier);
+PARSER(AbstractDeclarator);
+PARSER(PointerOpt);
+PARSER(SpecifierQualifierList);
+PARSER(ParameterTypeListOpt);
+PARSER(DeclarationSpecifiers);
+PARSER(TypeQualifierList);
+PARSER(TypeQualifierListOpt);
+PARSER(Initializer);
 
+PARSER(StaticAssertDeclaration)
+{
+    Node *ret;
+    Token *tok;
+
+    if (!(tok = expect(state, TOK__Static_assert))) return NULL;
+
+    MKRETT(NODE_STATIC_ASSERT_DECLARATION, 6);
+    REQUIRET(0, TOK_LPAREN);
+    REQUIREP(1, ConditionalExpression);
+    REQUIRET(2, TOK_COMMA);
+    REQUIRET(3, TOK_STR_LITERAL);
+    REQUIRET(4, TOK_RPAREN);
+    REQUIRET(5, TOK_SEMICOLON);
+
+    return ret;
+}
+
+PARSER(Designator)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_LBRACKET))) {
+        MKRETT(NODE_DESIGNATOR, 2);
+        REQUIREP(0, ConditionalExpression);
+        REQUIRET(1, TOK_RBRACKET);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_DOT))) {
+        MKRETT(NODE_DESIGNATOR, 1);
+        REQUIREP(0, Identifier);
+        return ret;
+    }
+
+    return NULL;
+}
+
+CONCAT_LIST(DesignatorList, NODE_DESIGNATOR_LIST, Designator)
+
+PARSER(Designation)
+{
+    Node *ret, *node;
+
+    if (!(node = parseDesignatorList(state, parent))) return NULL;
+
+    MKRETN(NODE_DESIGNATION, 2);
+    REQUIRET(1, TOK_ASG);
+    return ret;
+}
+OPT(Designation)
+
+PARSER(DesignationInitializer)
+{
+    Node *ret, *node;
+
+    if (!(node = parseDesignationOpt(state, parent))) return NULL;
+
+    MKRETN(NODE_DESIGNATION_INITIALIZER, 2);
+    REQUIREP(1, Initializer);
+
+    return ret;
+}
+
+COMMA_LIST(InitializerList, NODE_INITIALIZER_LIST, DesignationInitializer)
+
+PARSER(Initializer)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((ret = parseAssignmentExpression(state, parent))) return ret;
+
+    if ((tok = expect(state, TOK_LBRACE))) {
+        MKRETT(NODE_INITIALIZER, 3);
+        REQUIREP(0, InitializerList);
+
+        /* ending , is optional */
+        if ((ret->children[1] = expectN(state, ret, TOK_COMMA))) {
+            REQUIRET(2, TOK_RBRACE);
+        } else {
+            REQUIRET(1, TOK_RBRACE);
+        }
+
+        return ret;
+    }
+
+    return NULL;
+}
+
+#define RESTORE { RESTOREN(); return NULL; }
 static Node *parseDirectAbstractDeclaratorA1(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 5);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIREP(2, parseTypeQualifierListOpt);
-    REQUIREP(3, parseAssignmentExpressionOpt);
-    REQUIRET(4, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIREPR(2, TypeQualifierListOpt);
+    REQUIREPR(3, AssignmentExpressionOpt);
+    REQUIRETR(4, TOK_RBRACE);
     return ret;
 }
 
@@ -639,11 +781,11 @@ static Node *parseDirectAbstractDeclaratorA2(ParseState *state, Node *parent, No
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 6);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIRET(2, TOK_static);
-    REQUIREP(3, parseTypeQualifierListOpt);
-    REQUIREP(4, parseAssignmentExpression);
-    REQUIRET(5, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(2, TOK_static);
+    REQUIREPR(3, TypeQualifierListOpt);
+    REQUIREPR(4, AssignmentExpression);
+    REQUIRETR(5, TOK_RBRACE);
     return ret;
 }
 
@@ -651,11 +793,11 @@ static Node *parseDirectAbstractDeclaratorA3(ParseState *state, Node *parent, No
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 6);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIREP(2, parseTypeQualifierList);
-    REQUIRET(3, TOK_static);
-    REQUIREP(4, parseAssignmentExpression);
-    REQUIRET(5, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIREPR(2, TypeQualifierList);
+    REQUIRETR(3, TOK_static);
+    REQUIREPR(4, AssignmentExpression);
+    REQUIRETR(5, TOK_RBRACE);
     return ret;
 }
 
@@ -663,9 +805,9 @@ static Node *parseDirectAbstractDeclaratorA4(ParseState *state, Node *parent, No
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 4);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIRET(2, TOK_STAR);
-    REQUIRET(3, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(2, TOK_STAR);
+    REQUIRETR(3, TOK_RBRACE);
     return ret;
 }
 
@@ -673,13 +815,14 @@ static Node *parseDirectAbstractDeclaratorF(ParseState *state, Node *parent, Nod
 {
     Node *ret;
     MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 4);
-    REQUIRET(1, TOK_LPAREN);
-    REQUIREP(2, parseParameterTypeListOpt);
-    REQUIRET(3, TOK_RPAREN);
+    REQUIRETR(1, TOK_LPAREN);
+    REQUIREPR(2, ParameterTypeListOpt);
+    REQUIRETR(3, TOK_RPAREN);
     return ret;
 }
+#undef RESTORE
 
-static Node *parseDirectAbstractDeclarator(ParseState *state, Node *parent)
+PARSER(DirectAbstractDeclarator)
 {
     Node *ret, *node;
     Token *tok;
@@ -689,7 +832,7 @@ static Node *parseDirectAbstractDeclarator(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK_LPAREN))) {
         MKRETT(NODE_DIRECT_ABSTRACT_DECLARATOR, 2);
 #define RESTORE { RESTORET(); goto pdadrestore; }
-        REQUIREPR(0, parseAbstractDeclarator);
+        REQUIREPR(0, AbstractDeclarator);
         REQUIRETR(1, TOK_RPAREN);
 #undef RESTORE
         node = ret;
@@ -735,9 +878,9 @@ pdadrestore:
 
     return node;
 }
-OPT(parseAbstractDeclarator)
+OPT(AbstractDeclarator)
 
-static Node *parseAbstractDeclarator(ParseState *state, Node *parent)
+PARSER(AbstractDeclarator)
 {
     Node *ret, *node, *node2;
 
@@ -757,20 +900,20 @@ static Node *parseAbstractDeclarator(ParseState *state, Node *parent)
     return ret;
 }
 
-static Node *parseTypeName(ParseState *state, Node *parent)
+PARSER(TypeName)
 {
     Node *ret, *node;
 
     if (!(node = parseSpecifierQualifierList(state, parent))) return NULL;
 
     MKRETN(NODE_TYPE_NAME, 2);
-    REQUIREP(1, parseAbstractDeclaratorOpt);
+    REQUIREP(1, AbstractDeclaratorOpt);
     return ret;
 }
 
-COMMA_LIST(parseIdentifierList, NODE_IDENTIFIER_LIST, parseIdentifier)
+COMMA_LIST(IdentifierList, NODE_IDENTIFIER_LIST, Identifier)
 
-static Node *parseParameterDeclaration(ParseState *state, Node *parent)
+PARSER(ParameterDeclaration)
 {
     Node *ret, *node, *node2;
 
@@ -793,9 +936,9 @@ static Node *parseParameterDeclaration(ParseState *state, Node *parent)
     }
 }
 
-COMMA_LIST(parseParameterList, NODE_PARAMETER_LIST, parseParameterDeclaration)
+COMMA_LIST(ParameterList, NODE_PARAMETER_LIST, ParameterDeclaration)
 
-static Node *parseParameterTypeList(ParseState *state, Node *parent)
+PARSER(ParameterTypeList)
 {
     Node *ret, *node, *node2;
 
@@ -809,36 +952,11 @@ static Node *parseParameterTypeList(ParseState *state, Node *parent)
 
     return node;
 }
-OPT(parseParameterTypeList)
+OPT(ParameterTypeList)
 
-static Node *parseTypeQualifierListL(ParseState *state, Node *parent, int need1)
-{
-    Node *ret, *node;
-    struct Buffer_Nodep buf;
-    size_t i;
+CONCAT_LIST(TypeQualifierList, NODE_TYPE_QUALIFIER_LIST, TypeQualifier)
 
-    INIT_BUFFER(buf);
-
-    while ((node = parseTypeQualifier(state, parent))) {
-        WRITE_ONE_BUFFER(buf, node);
-    }
-
-    if (need1 && buf.bufused == 0) {
-        FREE_BUFFER(buf);
-        return NULL;
-    }
-
-    ret = newNode(parent, NODE_TYPE_QUALIFIER_LIST, NULL, buf.bufused);
-    for (i = 0; i < buf.bufused; i++) {
-        ret->children[i] = buf.buf[i];
-        buf.buf[i]->parent = ret;
-    }
-
-    return ret;
-}
-PARSER_LIST(parseTypeQualifierList)
-
-static Node *parsePointerOpt(ParseState *state, Node *parent)
+PARSER(PointerOpt)
 {
     Node *ret, *node;
     struct Buffer_Nodep buf;
@@ -870,14 +988,15 @@ static Node *parsePointerOpt(ParseState *state, Node *parent)
     return ret;
 }
 
+#define RESTORE { RESTOREN(); return NULL; }
 static Node *parseDirectDeclaratorA1(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 5);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIREP(2, parseTypeQualifierListOpt);
-    REQUIREP(3, parseAssignmentExpressionOpt);
-    REQUIRET(4, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIREPR(2, TypeQualifierListOpt);
+    REQUIREPR(3, AssignmentExpressionOpt);
+    REQUIRETR(4, TOK_RBRACE);
     return ret;
 }
 
@@ -885,11 +1004,11 @@ static Node *parseDirectDeclaratorA2(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 6);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIRET(2, TOK_static);
-    REQUIREP(3, parseTypeQualifierListOpt);
-    REQUIREP(4, parseAssignmentExpression);
-    REQUIRET(5, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIRETR(2, TOK_static);
+    REQUIREPR(3, TypeQualifierListOpt);
+    REQUIREPR(4, AssignmentExpression);
+    REQUIRETR(5, TOK_RBRACE);
     return ret;
 }
 
@@ -897,11 +1016,11 @@ static Node *parseDirectDeclaratorA3(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 6);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIREP(2, parseTypeQualifierList);
-    REQUIRET(3, TOK_static);
-    REQUIREP(4, parseAssignmentExpression);
-    REQUIRET(5, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIREPR(2, TypeQualifierList);
+    REQUIRETR(3, TOK_static);
+    REQUIREPR(4, AssignmentExpression);
+    REQUIRETR(5, TOK_RBRACE);
     return ret;
 }
 
@@ -909,10 +1028,10 @@ static Node *parseDirectDeclaratorA4(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 5);
-    REQUIRET(1, TOK_LBRACE);
-    REQUIREP(2, parseTypeQualifierListOpt);
-    REQUIRET(3, TOK_STAR);
-    REQUIRET(4, TOK_RBRACE);
+    REQUIRETR(1, TOK_LBRACE);
+    REQUIREPR(2, TypeQualifierListOpt);
+    REQUIRETR(3, TOK_STAR);
+    REQUIRETR(4, TOK_RBRACE);
     return ret;
 }
 
@@ -920,9 +1039,9 @@ static Node *parseDirectDeclaratorF1(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 4);
-    REQUIRET(1, TOK_LPAREN);
-    REQUIREP(2, parseParameterTypeList);
-    REQUIRET(3, TOK_RPAREN);
+    REQUIRETR(1, TOK_LPAREN);
+    REQUIREPR(2, ParameterTypeList);
+    REQUIRETR(3, TOK_RPAREN);
     return ret;
 }
 
@@ -930,13 +1049,14 @@ static Node *parseDirectDeclaratorF2(ParseState *state, Node *parent, Node *node
 {
     Node *ret;
     MKRETN(NODE_DIRECT_DECLARATOR, 4);
-    REQUIRET(1, TOK_LPAREN);
-    REQUIREP(2, parseIdentifierListOpt);
-    REQUIRET(3, TOK_RPAREN);
+    REQUIRETR(1, TOK_LPAREN);
+    REQUIREPR(2, IdentifierListOpt);
+    REQUIRETR(3, TOK_RPAREN);
     return ret;
 }
+#undef RESTORE
 
-static Node *parseDirectDeclarator(ParseState *state, Node *parent)
+PARSER(DirectDeclarator)
 {
     Node *ret, *node;
     Token *tok;
@@ -944,11 +1064,16 @@ static Node *parseDirectDeclarator(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK_ID))) {
         MKRETT(NODE_DIRECT_DECLARATOR, 0);
         node = ret;
+
     } else if ((tok = expect(state, TOK_LPAREN))) {
         MKRETT(NODE_DIRECT_DECLARATOR, 2);
-        REQUIREP(0, parseDeclarator);
+        REQUIREP(0, Declarator);
         REQUIRET(1, TOK_RPAREN);
         node = ret;
+
+    } else {
+        return NULL;
+
     }
 
     while (1) {
@@ -988,19 +1113,19 @@ static Node *parseDirectDeclarator(ParseState *state, Node *parent)
     return node;
 }
 
-static Node *parseDeclarator(ParseState *state, Node *parent)
+PARSER(Declarator)
 {
     Node *ret, *node;
 
     if (!(node = parsePointerOpt(state, parent))) return NULL;
 
     MKRETN(NODE_DECLARATOR, 2);
-    REQUIREP(1, parseDirectDeclarator);
+    REQUIREP(1, DirectDeclarator);
 
     return ret;
 }
 
-static Node *parseAlignmentSpecifier(ParseState *state, Node *parent)
+PARSER(AlignmentSpecifier)
 {
     Node *ret, *node;
     Token *tok;
@@ -1023,7 +1148,7 @@ static Node *parseAlignmentSpecifier(ParseState *state, Node *parent)
     return ret;
 }
 
-static Node *parseFunctionSpecifier(ParseState *state, Node *parent)
+PARSER(FunctionSpecifier)
 {
     Node *ret;
 
@@ -1036,7 +1161,7 @@ static Node *parseFunctionSpecifier(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseTypeQualifier(ParseState *state, Node *parent)
+PARSER(TypeQualifier)
 {
     Node *ret;
 
@@ -1051,7 +1176,7 @@ static Node *parseTypeQualifier(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseAtomicTypeSpecifier(ParseState *state, Node *parent)
+PARSER(AtomicTypeSpecifier)
 {
     Node *ret;
     Token *tok;
@@ -1060,37 +1185,37 @@ static Node *parseAtomicTypeSpecifier(ParseState *state, Node *parent)
 
     MKRETT(NODE_ATOMIC_TYPE_SPECIFIER, 3);
     REQUIRET(0, TOK_LPAREN);
-    REQUIREP(1, parseTypeName);
+    REQUIREP(1, TypeName);
     REQUIRET(2, TOK_RPAREN);
 
     return ret;
 }
 
-static Node *parseEnumerator(ParseState *state, Node *parent)
+PARSER(Enumerator)
 {
     Node *ret, *node, *node2;
 
-    if (!(node = parseEnumerationConstant(state, parent))) return NULL;
+    if (!(node = parseIdentifier(state, parent))) return NULL;
 
     if ((node2 = expectN(state, parent, TOK_ASG))) {
         MKRETN2(NODE_ENUMERATOR, 3);
-        REQUIREPO(2, parseConditionalExpression, { RESTOREN(); return node; });
+        REQUIREPO(2, ConditionalExpression, { RESTOREN(); return node; });
         return ret;
     }
 
     return node;
 }
 
-COMMA_LIST(parseEnumeratorList, NODE_ENUMERATOR_LIST, parseEnumerator)
+COMMA_LIST(EnumeratorList, NODE_ENUMERATOR_LIST, Enumerator)
 
-static Node *parseEnumSpecifier(ParseState *state, Node *parent)
+PARSER(EnumSpecifier)
 {
     Node *ret;
     Token *tok;
 
     if ((tok = expect(state, TOK_enum))) {
         MKRETT(NODE_ENUM_SPECIFIER, 5);
-        REQUIREP(0, parseIdentifierOpt);
+        REQUIREP(0, IdentifierOpt);
 
         if (ret->children[0]->tok) {
             /* the rest is optional */
@@ -1103,7 +1228,7 @@ static Node *parseEnumSpecifier(ParseState *state, Node *parent)
         }
 
         if (ret->children[1]) {
-            REQUIREP(2, parseEnumeratorList);
+            REQUIREP(2, EnumeratorList);
             if ((ret->children[3] = expectN(state, ret, TOK_COMMA))) {
                 REQUIRET(4, TOK_RBRACE);
             } else {
@@ -1117,7 +1242,7 @@ static Node *parseEnumSpecifier(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseStructDeclarator(ParseState *state, Node *parent)
+PARSER(StructDeclarator)
 {
     Node *ret, *node, *node2;
     Token *tok;
@@ -1125,14 +1250,14 @@ static Node *parseStructDeclarator(ParseState *state, Node *parent)
     if ((node = parseDeclarator(state, parent))) {
         if ((node2 = expectN(state, parent, TOK_COLON))) {
             MKRETN2(NODE_BITFIELD_DECLARATOR, 3);
-            REQUIREPO(2, parseConstant, { RESTOREN(); return node; });
+            REQUIREPO(2, Constant, { RESTOREN(); return node; });
             return ret;
         }
         return node;
 
     } else if ((tok = expect(state, TOK_COLON))) {
         MKRETT(NODE_BITFIELD_PADDING, 1);
-        REQUIREP(0, parseConstant);
+        REQUIREP(0, Constant);
         return ret;
 
     }
@@ -1140,7 +1265,7 @@ static Node *parseStructDeclarator(ParseState *state, Node *parent)
     return NULL;
 }
 
-COMMA_LIST(parseStructDeclaratorList, NODE_STRUCT_DECLARATOR_LIST, parseStructDeclarator)
+COMMA_LIST(StructDeclaratorList, NODE_STRUCT_DECLARATOR_LIST, StructDeclarator)
 
 static Node *parseSpecifierQualifierListL(ParseState *state, Node *parent, int need1)
 {
@@ -1170,15 +1295,15 @@ static Node *parseSpecifierQualifierListL(ParseState *state, Node *parent, int n
 
     return ret;
 }
-PARSER_LIST(parseSpecifierQualifierList)
+PARSER_LIST(SpecifierQualifierList)
 
-static Node *parseStructDeclaration(ParseState *state, Node *parent)
+PARSER(StructDeclaration)
 {
     Node *ret, *node;
 
     if ((node = parseSpecifierQualifierList(state, parent))) {
         MKRETN(NODE_STRUCT_DECLARATION, 3);
-        REQUIREP(1, parseStructDeclaratorListOpt);
+        REQUIREP(1, StructDeclaratorListOpt);
         REQUIRET(2, TOK_SEMICOLON);
         return ret;
     }
@@ -1188,36 +1313,9 @@ static Node *parseStructDeclaration(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseStructDeclarationListL(ParseState *state, Node *parent, int need1)
-{
-    Node *ret;
-    struct Buffer_Nodep buf;
-    size_t i;
+CONCAT_LIST(StructDeclarationList, NODE_STRUCT_DECLARATION_LIST, StructDeclaration)
 
-    INIT_BUFFER(buf);
-
-    while ((ret = parseStructDeclaration(state, parent))) {
-        WRITE_ONE_BUFFER(buf, ret);
-    }
-
-    if (need1 && buf.bufused == 0) {
-        FREE_BUFFER(buf);
-        return NULL;
-    }
-
-    ret = newNode(parent, NODE_STRUCT_DECLARATION_LIST, NULL, buf.bufused);
-    for (i = 0; i < buf.bufused; i++) {
-        ret->children[i] = buf.buf[i];
-        buf.buf[i]->parent = ret;
-    }
-
-    FREE_BUFFER(buf);
-
-    return ret;
-}
-PARSER_LIST(parseStructDeclarationList)
-
-static Node *parseStructOrUnionSpecifier(ParseState *state, Node *parent)
+PARSER(StructOrUnionSpecifier)
 {
     Node *ret;
     Token *tok;
@@ -1225,7 +1323,7 @@ static Node *parseStructOrUnionSpecifier(ParseState *state, Node *parent)
     if ((tok = expect(state, TOK_struct)) ||
         (tok = expect(state, TOK_union))) {
         MKRETT(NODE_STRUCT_OR_UNION_SPECIFIER, 4);
-        REQUIREP(0, parseIdentifierOpt);
+        REQUIREP(0, IdentifierOpt);
         if (ret->children[0]->tok) {
             /* the rest is optional */
             ret->children[1] = expectN(state, ret, TOK_LBRACE);
@@ -1237,7 +1335,7 @@ static Node *parseStructOrUnionSpecifier(ParseState *state, Node *parent)
         }
 
         if (ret->children[1]) {
-            REQUIREP(2, parseStructDeclarationList);
+            REQUIREP(2, StructDeclarationList);
             REQUIRET(3, TOK_RBRACE);
         }
 
@@ -1247,7 +1345,7 @@ static Node *parseStructOrUnionSpecifier(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseTypeSpecifier(ParseState *state, Node *parent)
+PARSER(TypeSpecifier)
 {
     Node *ret;
 
@@ -1275,7 +1373,7 @@ static Node *parseTypeSpecifier(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseStorageClassSpecifier(ParseState *state, Node *parent)
+PARSER(StorageClassSpecifier)
 {
     Node *ret;
     if ((ret = expectN(state, parent, TOK_typedef)) ||
@@ -1290,7 +1388,7 @@ static Node *parseStorageClassSpecifier(ParseState *state, Node *parent)
     return NULL;
 }
 
-static Node *parseInitDeclarator(ParseState *state, Node *parent)
+PARSER(InitDeclarator)
 {
     Node *ret, *node, *node2;
 
@@ -1298,16 +1396,16 @@ static Node *parseInitDeclarator(ParseState *state, Node *parent)
 
     if ((node2 = expectN(state, parent, TOK_ASG))) {
         MKRETN2(NODE_INIT_DECLARATOR, 3);
-        REQUIREPO(2, parseInitializer, { RESTOREN(); return node; });
+        REQUIREPO(2, Initializer, { RESTOREN(); return node; });
         return ret;
     }
 
     return node;
 }
 
-COMMA_LIST(parseInitDeclaratorList, NODE_INIT_DECLARATOR_LIST, parseInitDeclarator)
+COMMA_LIST(InitDeclaratorList, NODE_INIT_DECLARATOR_LIST, InitDeclarator)
 
-static Node *parseDeclarationSpecifiers(ParseState *state, Node *parent)
+PARSER(DeclarationSpecifiers)
 {
     Node *ret, *node;
     struct Buffer_Nodep buf;
@@ -1367,13 +1465,13 @@ static Node *parseDeclarationSpecifiers(ParseState *state, Node *parent)
     return ret;
 }
 
-static Node *parseDeclaration(ParseState *state, Node *parent)
+PARSER(Declaration)
 {
     Node *ret, *node;
 
     if ((node = parseDeclarationSpecifiers(state, parent))) {
         MKRETN(NODE_DECLARATION, 3);
-        REQUIREP(1, parseInitDeclaratorListOpt);
+        REQUIREP(1, InitDeclaratorListOpt);
         REQUIRET(2, TOK_SEMICOLON);
         return ret;
     }
@@ -1394,7 +1492,7 @@ Node *cparse(ScanState *state)
     INIT_BUFFER(pState.buf);
 
     /* FIXME: obviously this would refer to the top-level parser, not expression */
-    ret = parseExpression(&pState, NULL);
+    ret = parseDeclaration(&pState, NULL);
 
     FREE_BUFFER(pState.buf);
 

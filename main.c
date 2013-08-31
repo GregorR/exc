@@ -30,11 +30,21 @@ int main(int argc, char **argv)
         node = cparse(&state);
         FREE_BUFFER(state.buf);
 
-        unparsed = cunparse(node);
-        freeNode(node);
+        if (node) {
+            unparsed = cunparse(node);
+            fprintf(stderr, "%s\n", unparsed.buf);
+            FREE_BUFFER(unparsed);
 
-        fprintf(stderr, "%s\n", unparsed.buf);
-        FREE_BUFFER(unparsed);
+            unparsed = cunparseJSON(node);
+            fprintf(stderr, "%s\n", unparsed.buf);
+            FREE_BUFFER(unparsed);
+
+            freeNode(node);
+
+        } else {
+            fprintf(stderr, "%s: Failed to parse.\n", argv[i]);
+
+        }
 
     }
 

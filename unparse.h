@@ -9,5 +9,6 @@
 #include "node.h"
 
 struct Buffer_char cunparse(Node *node);
+struct Buffer_char cunparseJSON(Node *node);
 
 #endif

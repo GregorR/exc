@@ -462,3 +462,4 @@ void freeToken(Token *tok)
     free(tok->tok);
     free(tok);
 }
+

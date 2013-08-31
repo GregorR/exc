@@ -17,6 +17,9 @@ typedef struct Node_ {
 } Node;
 
 Token *newToken(int type, size_t toklen, char *tok);
+void freeToken(Token *);
+
 Node *newNode(Node *parent, int type, Token *tok, size_t len);
+void freeNode(Node *);
 
 #endif
