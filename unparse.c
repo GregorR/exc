@@ -54,6 +54,44 @@ struct Buffer_char cunparse(Node *node)
 }
 
 
+static void unparseJSONStr(struct Buffer_char *buf, const char *str)
+{
+    size_t i;
+    for (i = 0; str[i]; i++) {
+        char c = str[i];
+        switch (c) {
+            case '"':
+            case '\\':
+                WRITE_ONE_BUFFER(*buf, '\\');
+                WRITE_ONE_BUFFER(*buf, c);
+                break;
+
+            case '\b':
+                WRITE_BUFFER(*buf, "\\b", 2);
+                break;
+
+            case '\f':
+                WRITE_BUFFER(*buf, "\\f", 2);
+                break;
+
+            case '\n':
+                WRITE_BUFFER(*buf, "\\n", 2);
+                break;
+
+            case '\r':
+                WRITE_BUFFER(*buf, "\\r", 2);
+                break;
+
+            case '\t':
+                WRITE_BUFFER(*buf, "\\t", 2);
+                break;
+
+            default:
+                WRITE_ONE_BUFFER(*buf, c);
+        }
+    }
+}
+
 static void unparseJSONPrime(struct Buffer_char *buf, Node *node)
 {
     size_t i;
@@ -66,19 +104,19 @@ static void unparseJSONPrime(struct Buffer_char *buf, Node *node)
         WRITE_BUFFER(*buf, "\"tok\":{\"type\":\"", 15);
 
         tmp = tokenName(tok->type);
-        WRITE_BUFFER(*buf, tmp, strlen(tmp));
+        unparseJSONStr(buf, tmp);
 
         WRITE_ONE_BUFFER(*buf, '"');
 
         if (tok->pre) {
             WRITE_BUFFER(*buf, ",\"pre\":\"", 8);
-            WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
+            unparseJSONStr(buf, tok->pre);
             WRITE_ONE_BUFFER(*buf, '"');
         }
 
         if (tok->tok) {
             WRITE_BUFFER(*buf, ",\"tok\":\"", 8);
-            WRITE_BUFFER(*buf, tok->tok, strlen(tok->tok));
+            unparseJSONStr(buf, tok->tok);
             WRITE_ONE_BUFFER(*buf, '"');
         }
 
@@ -87,7 +125,7 @@ static void unparseJSONPrime(struct Buffer_char *buf, Node *node)
 
     WRITE_BUFFER(*buf, "\"type\":\"", 8);
     tmp = nodeName(node->type);
-    WRITE_BUFFER(*buf, tmp, strlen(tmp));
+    unparseJSONStr(buf, tmp);
 
     WRITE_BUFFER(*buf, "\",\"children\":[", 14);
 
