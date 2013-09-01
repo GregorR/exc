@@ -19,6 +19,7 @@ typedef struct ScanState_ {
     size_t idx, f, l, c;
 } ScanState;
 
+ScanState newScanState(size_t f);
 Token *cscan(ScanState *state);
 
 #endif

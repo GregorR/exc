@@ -6,6 +6,17 @@
 
 #include "scan.h"
 
+ScanState newScanState(size_t f)
+{
+    ScanState ret;
+    ret.buf.buf = NULL;
+    ret.buf.bufused = ret.buf.bufsz = 0;
+    ret.f = f;
+    ret.idx = 0;
+    ret.l = ret.c = 1;
+    return ret;
+}
+
 static int ciswhite(char c)
 {
     return (c == ' ' ||

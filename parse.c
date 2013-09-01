@@ -724,6 +724,7 @@ PARSER(DeclarationSpecifiers);
 PARSER(TypeQualifierList);
 PARSER(TypeQualifierListOpt);
 PARSER(Initializer);
+PARSER(DeclarationDecoratorList);
 
 /* the third argument prevents multiple specifiers, particularly ID ID (since
  * this parser is typedef-ambiguous) */
@@ -1347,8 +1348,16 @@ static Node *parseSpecifierQualifierListL(ParseState *state, Node *parent, int n
         buf.buf[i]->parent = ret;
     }
 
-    FREE_BUFFER(buf);
+    /* and finally, the whole thing can have a decoration */
+    {
+        Node *node, *node2;
+        if ((node2 = parseDeclarationDecoratorList(state, parent))) {
+            node = ret;
+            MKRETN2(NODE_DECORATED_SPECIFIER_QUALIFIER_LIST, 2);
+        }
+    }
 
+    FREE_BUFFER(buf);
     return ret;
 }
 PARSER_LIST(SpecifierQualifierList)
@@ -1478,7 +1487,7 @@ COMMA_LIST(InitDeclaratorList, NODE_INIT_DECLARATOR_LIST, InitDeclarator)
 
 PARSER(DeclarationSpecifiers)
 {
-    Node *ret, *node;
+    Node *ret, *node, *node2;
     struct Buffer_Nodep buf;
     size_t i;
     int foundSpecifier = 0;
@@ -1534,13 +1543,33 @@ PARSER(DeclarationSpecifiers)
         buf.buf[i]->parent = ret;
     }
 
+    /* and the whole thing can have a type decoration */
+    if ((node2 = parseDeclarationDecoratorList(state, parent))) {
+        node = ret;
+        MKRETN2(NODE_DECORATED_DECLARATION_SPECIFIERS, 2);
+    }
+
     FREE_BUFFER(buf);
     return ret;
 }
 
 PARSER(Declaration)
 {
-    Node *ret, *node;
+    Node *ret, *node, *node2;
+
+    if ((node = parseDeclarationDecoratorList(state, parent))) {
+        if ((node2 = parseDeclaration(state, parent))) {
+            MKRETN2(NODE_DECORATED_DECLARATION, 2);
+            return ret;
+        } else if ((node2 = expectN(state, parent, TOK_SEMICOLON))) {
+            MKRETN2(NODE_DECORATION_DECLARATION, 2);
+            return ret;
+        }
+
+        pushNode(state, node);
+        freeNode(node);
+        return NULL;
+    }
 
     if ((node = parseDeclarationSpecifiers(state, parent))) {
         MKRETN(NODE_DECLARATION, 3);
@@ -1797,6 +1826,47 @@ PARSER(Top)
  * DECORATION                                                  *
  ***************************************************************/
 PARSER(DecorationOpenOpt);
+
+PARSER(DecorationSubDeclaration)
+{
+    Node *ret;
+    Token *tok;
+
+    if (!(tok = expect(state, TOK_LBRACE))) return NULL;
+
+    MKRETT(NODE_DECORATION_SUB_DECLARATION, 2);
+    REQUIREP(0, TranslationUnitOpt);
+    REQUIRET(1, TOK_RBRACE);
+    return ret;
+}
+OPT(DecorationSubDeclaration)
+
+PARSER(DeclarationDecorator)
+{
+    Node *ret;
+    Token *tok;
+
+    if ((tok = expect(state, TOK_DECORATION))) {
+        MKRETT(NODE_DECLARATION_DECORATOR, 3);
+        REQUIREP(0, DecorationName);
+        REQUIREP(1, DecorationOpenOpt);
+        REQUIREP(2, DecorationSubDeclarationOpt);
+        return ret;
+    }
+
+    if ((tok = expect(state, TOK_OPEN_DECORATION))) {
+        MKRETT(NODE_DECLARATION_DECORATOR, 4);
+        REQUIREP(0, DecorationName);
+        REQUIREP(1, DecorationOpenOpt);
+        REQUIREP(2, DecorationSubDeclarationOpt);
+        REQUIRET(3, TOK_CLOSE_DECORATION);
+        return ret;
+    }
+
+    return NULL;
+}
+
+CONCAT_LIST(DeclarationDecoratorList, NODE_DECLARATION_DECORATOR_LIST, DeclarationDecorator)
 
 PARSER(DecorationSubExpression)
 {

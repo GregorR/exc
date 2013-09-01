@@ -20,13 +20,11 @@ int main(int argc, char **argv)
             perror(argv[i]);
             continue;
         }
-        
+
+        state = newScanState(i);
         INIT_BUFFER(state.buf);
         READ_FILE_BUFFER(state.buf, f);
         WRITE_ONE_BUFFER(state.buf, '\0');
-        state.f = i;
-        state.idx = 0;
-        state.l = state.c = 1;
 
         error = NULL;
         node = cparse(&state, &error);

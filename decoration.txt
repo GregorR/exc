@@ -40,18 +40,22 @@ decoration-sub-expression:
     { block-item-list }
 
 declaration:
-    decoration-declaration declaration
-    decoration-declaration ;
+    declaration-decorator-list declaration
+    declaration-decorator-list ;
 
 declaration-specifiers:
-    declaration-specifiers decoration-declaration
+    declaration-specifiers declaration-decorator-list
 
 specifier-qualifier-list:
-    specifier-qualifier-list decoration-declaration
+    specifier-qualifier-list declaration-decorator-list
 
-decoration-declaration:
-    @ decoration-name decoration-open-opt decoration-sub-declaration-specifiers-opt
-    /@ decoration-name decoration-open-opt decoration-sub-declaration-specifiers-opt @/
+declaration-decorator-list:
+    declaration-decorator
+    declaration-decorator declaration-decorator-list
 
-decoration-sub-declaration-specifiers:
-    { declaration-specifiers-opt }
+declaration-decarator:
+    @ decoration-name decoration-open-opt decoration-sub-declaration-opt
+    /@ decoration-name decoration-open-opt decoration-sub-declaration-opt @/
+
+decoration-sub-declaration:
+    { translation-unit-opt }
