@@ -14,6 +14,7 @@ BUFFER(Nodep, Node *);
 typedef struct TransformState_ TransformState;
 typedef Node *(*transform_func_t)(TransformState *, Node *, int *then);
 typedef int (*transform_condition_func_t)(TransformState *, Node *);
+typedef void (*transform_stage_func_t)(TransformState *, Node *);
 
 /* "then" options */
 enum {
@@ -25,12 +26,12 @@ enum {
 /* transforms themselves */
 typedef struct Transform_ {
     const char *name;
-    transform_func_t func;
+    transform_stage_func_t func;
 } Transform;
-BUFFER(Transformp, Transform *);
+BUFFER(Transform, Transform);
 
 struct TransformState_ {
-    struct Buffer_Transformp transforms;
+    struct Buffer_Transform transforms;
     struct Buffer_charp filenames;
     struct Buffer_Nodep files;
 };
