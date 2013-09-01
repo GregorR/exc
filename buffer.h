@@ -39,7 +39,7 @@
 
 #include "helpers.h"
 
-#define BUFFER_DEFAULT_SIZE 1024
+#define BUFFER_DEFAULT_SIZE 8
 
 /* auto-expanding buffer */
 #if defined(BUFFER_GGGGC)

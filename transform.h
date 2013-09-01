@@ -32,7 +32,7 @@ BUFFER(Transform, Transform);
 
 struct TransformState_ {
     struct Buffer_Transform transforms;
-    struct Buffer_charp filenames;
+    struct Buffer_charp filenames; /* memory owned by the transform state */
     struct Buffer_Nodep files;
 };
 

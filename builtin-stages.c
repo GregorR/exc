@@ -1,15 +1,48 @@
+#define _XOPEN_SOURCE 700 /* for strdup */
+
 #include <string.h>
 
 #include "builtin-stages.h"
 #include "parse.h"
+#include "unparse.h"
 
 /* @import stage */
 static Node *transformImportStageF(TransformState *state, Node *node, int *then)
 {
+    struct Buffer_char fname;
+    size_t i;
+
     /* found an @import, make sure it's a declaration */
     if (node->parent->type != NODE_DECORATION_DECLARATION) return node;
 
-    fprintf(stderr, "Wooh.\n");
+    /* get the filename */
+    if (node->children[1]->type != NODE_NIL) {
+        fname = cunparse(node->children[1]->children[0]);
+        if (!fname.buf) return node;
+    } else {
+        fname.buf = strdup("");
+        if (!fname.buf) return node;
+    }
+
+    /* swap the @import for a @include */
+    free(node->children[0]->tok->tok);
+    node->children[0]->tok->tok = strdup("include");
+    if (!node->children[0]->tok->tok) {
+        FREE_BUFFER(fname);
+        return node;
+    }
+
+    /* and add the file */
+    for (i = 0; i < state->filenames.bufused && strcmp(fname.buf, state->filenames.buf[i]); i++);
+    if (i < state->filenames.bufused) {
+        /* already found! */
+        FREE_BUFFER(fname);
+
+    } else {
+        WRITE_ONE_BUFFER(state->filenames, fname.buf);
+
+    }
+
     return node;
 }
 
