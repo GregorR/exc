@@ -454,7 +454,8 @@ Token *cscan(ScanState *state)
         ttype = TOK_TERM;
     }
 
-    tok = strndup(buf->buf + fi, i - fi);
+    if (!tok)
+        tok = strndup(buf->buf + fi, i - fi);
     if (!tok) goto fail;
 
     ret = calloc(sizeof(Token), 1);

@@ -345,6 +345,8 @@ static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1
         buf.buf[i]->parent = ret; \
     } \
     \
+    FREE_BUFFER(buf); \
+    \
     return ret; \
 } \
 PARSER_LIST(parserName)
@@ -1532,6 +1534,7 @@ PARSER(DeclarationSpecifiers)
         buf.buf[i]->parent = ret;
     }
 
+    FREE_BUFFER(buf);
     return ret;
 }
 
@@ -1988,6 +1991,7 @@ Node *cparse(ScanState *state, char **error)
     for (i = 0; i < pState.buf.bufused; i++)
         freeToken(pState.buf.buf[i]);
     FREE_BUFFER(pState.buf);
+    FREE_BUFFER(pState.eexpected);
 
     return ret;
 }
