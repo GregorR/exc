@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic \
  -Wno-unused-function
 
-SRC=main.c parse.c scan.c unparse.c
+SRC=main.c parse.c scan.c transform.c unparse.c
 OBJS=$(SRC:.c=.o)
 
 all: exc

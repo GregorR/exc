@@ -362,7 +362,7 @@ PARSER(Expression);
 PARSER(TypeName);
 PARSER(InitializerList);
 PARSER(DecorationOpExpression);
-PARSER(DecorationExpression);
+PARSER(ExpressionDecorator);
 
 COMMA_LIST(ArgumentExpressionList, NODE_ARGUMENT_EXPRESSION_LIST, AssignmentExpression)
 
@@ -706,7 +706,7 @@ PARSER(PrimaryExpression)
     }
 
     if ((ret = parseGenericSelection(state, parent))) return ret;
-    if ((ret = parseDecorationExpression(state, parent))) return ret;
+    if ((ret = parseExpressionDecorator(state, parent))) return ret;
 
     return NULL;
 }
@@ -1902,13 +1902,13 @@ PARSER(DecorationSubExpression)
 }
 OPT(DecorationSubExpression)
 
-PARSER(DecorationExpression)
+PARSER(ExpressionDecorator)
 {
     Node *ret;
     Token *tok;
 
     if ((tok = expect(state, TOK_DECORATION))) {
-        MKRETT(NODE_DECORATION_EXPRESSION, 3);
+        MKRETT(NODE_EXPRESSION_DECORATOR, 3);
         REQUIREP(0, DecorationName);
         REQUIREP(1, DecorationOpenOpt);
         REQUIREP(2, DecorationSubExpressionOpt);
@@ -1916,7 +1916,7 @@ PARSER(DecorationExpression)
     }
 
     if ((tok = expect(state, TOK_OPEN_DECORATION))) {
-        MKRETT(NODE_DECORATION_EXPRESSION, 4);
+        MKRETT(NODE_EXPRESSION_DECORATOR, 4);
         REQUIREP(0, DecorationName);
         REQUIREP(1, DecorationOpenOpt);
         REQUIREP(2, DecorationSubExpressionOpt);
@@ -1933,7 +1933,7 @@ PARSER(DecorationOpExpression)
 
     if (!(node = parseCastExpression(state, parent))) return NULL;
 
-    while ((node2 = parseDecorationExpression(state, parent))) {
+    while ((node2 = parseExpressionDecorator(state, parent))) {
         MKRETN2(NODE_DECORATION_OP, 3);
         REQUIREPO(2, CastExpression, { RESTOREN(); break; });
         node = ret;

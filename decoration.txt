@@ -9,6 +9,8 @@ all other ambiguities in C)
 
 To support decorations, the C grammar is extended as follows:
 
+----------------------------------------------------------------
+
 punctuator:
     @ /@ @/
 
@@ -22,16 +24,16 @@ decoration-open-cont:
     «any sequence of tokens with matching ()s»
 
 primary-expression:
-    decoration-expression
+    expression-decoration
 
 multiplicative-expression:
     «cast-expression is replaced by decoration-op-expression»
 
 decoration-op-expression:
     cast-expression
-    decoration-op-expression decoration-expression cast-expression
+    decoration-op-expression expression-decorator cast-expression
 
-decoration-expression:
+expression-decorator:
     @ decoration-name decoration-open-opt decoration-sub-expression-opt
     /@ decoration-name decoration-open-opt decoration-sub-expression-opt @/
 
@@ -53,9 +55,25 @@ declaration-decorator-list:
     declaration-decorator
     declaration-decorator declaration-decorator-list
 
-declaration-decarator:
+declaration-decorator:
     @ decoration-name decoration-open-opt decoration-sub-declaration-opt
     /@ decoration-name decoration-open-opt decoration-sub-declaration-opt @/
 
 decoration-sub-declaration:
     { translation-unit-opt }
+
+----------------------------------------------------------------
+
+This allows for decorators as:
+
+Decorator expressions: Decorators themselves may serve as an expression.
+
+Decorator operator: They may be used as an operator, with precedence just
+higher than multiplication.
+
+Decorator for declaration: Decorating otherwise-normal declarations.
+
+Decorator declaration: Decorators may serve as declarations. When ambiguous
+with expression declarators, the latter is preferred.
+
+Type decorators: Come after type name and specifiers.
