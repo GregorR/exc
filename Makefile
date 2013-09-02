@@ -18,5 +18,5 @@ exc: $(OBJS)
 clean:
 	rm -f exc $(OBJS) deps
 
-deps:
+deps: *.c *.h
 	-$(CC) -MM -MP *.c > deps

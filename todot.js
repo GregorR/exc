@@ -10,7 +10,7 @@ function nodeToDot(node) {
 
     if (node.tok) {
         console.log("node_" + node.id + " -> node_tok_" + node.id + ";");
-        console.log("node_tok_" + node.id + " [label=\"" + node.tok.tok + "\"];");
+        console.log("node_tok_" + node.id + " [label=\"" + node.tok.tok + "\", shape=\"box\"];");
     }
 
     for (var i = 0; i < node.children.length; i++) {

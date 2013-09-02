@@ -46,7 +46,7 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then)
     return node;
 }
 
-void transformImportStage(TransformState *state, Node *node)
+Node *transformImportStage(TransformState *state, Node *node)
 {
     TrFind find;
 
@@ -54,11 +54,19 @@ void transformImportStage(TransformState *state, Node *node)
     memset(&find, 0, sizeof(find));
     find.matchDecoration[0] = "import";
     transform(state, node, &find, transformImportStageF);
+
+    return node;
 }
 
 /* @extension stage */
-void transformExtensionStage(TransformState *state, Node *node);
+Node *transformExtensionStage(TransformState *state, Node *node)
+{
+    return node;
+}
 
 /* @raw stage */
-void transformRawStage(TransformState *state, Node *node);
+Node *transformRawStage(TransformState *state, Node *node)
+{
+    return node;
+}
 
