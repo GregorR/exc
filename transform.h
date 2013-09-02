@@ -34,6 +34,7 @@ struct TransformState_ {
     struct Buffer_Transform transforms;
     struct Buffer_charp filenames; /* memory owned by the transform state */
     struct Buffer_Nodep files;
+    Node *node;
 };
 
 /* utility functions for transforms */
@@ -53,7 +54,8 @@ typedef struct TrFind_ {
 /* perform the given transformation on matching nodes */
 void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func);
 
-/* load a file into the transform state */
-void trLoadFile(TransformState *state, const char *name);
+/* starting from the given file (malloc'd, now owned by TransformState), read,
+ * preprocess, and transform */
+TransformState transformFile(char *filename);
 
 #endif

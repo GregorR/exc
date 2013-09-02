@@ -1,14 +1,31 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
+#include "transform.h"
+#if 0
 #include "parse.h"
 #include "unparse.h"
+#endif
 
 int main(int argc, char **argv)
 {
     int i;
+    size_t si;
     for (i = 1; i < argc; i++) {
+        /* remove .exc */
+        char *file = argv[i];
+        for (si = 0; file[si]; si++) {
+            if (!strcmp(file + si, ".exc")) {
+                file[si] = '\0';
+                break;
+            }
+        }
+
+        /* handle the file */
+        transformFile(file);
+#if 0
         ScanState state;
         Node *node;
         struct Buffer_char unparsed;
@@ -49,6 +66,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "%s: Failed to parse.\n", argv[i]);
 
         }
+#endif
 
     }
 
