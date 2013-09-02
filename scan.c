@@ -489,11 +489,3 @@ fail:
     free(ret);
     return NULL;
 }
-
-void freeToken(Token *tok)
-{
-    free(tok->pre);
-    free(tok->tok);
-    free(tok);
-}
-

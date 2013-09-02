@@ -16,7 +16,7 @@ typedef struct Node_ {
     struct Node_ *children[1];
 } Node;
 
-Token *newToken(int type, size_t toklen, char *tok);
+Token *newToken(int type, int dup, char *pre, char *tok);
 void freeToken(Token *);
 
 Node *newNode(Node *parent, int type, Token *tok, size_t len);

@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #include "transform.h"
+#include "unparse.h"
 #if 0
 #include "parse.h"
 #include "unparse.h"
@@ -14,6 +15,9 @@ int main(int argc, char **argv)
     int i;
     size_t si;
     for (i = 1; i < argc; i++) {
+        TransformState state;
+        struct Buffer_char unparsed;
+
         /* remove .exc */
         char *file = argv[i];
         for (si = 0; file[si]; si++) {
@@ -24,7 +28,12 @@ int main(int argc, char **argv)
         }
 
         /* handle the file */
-        transformFile(file);
+        state = transformFile(file);
+
+        /* unparse it */
+        unparsed = cunparse(state.files.buf[0]);
+        fprintf(stderr, "%s\n", unparsed.buf);
+        FREE_BUFFER(unparsed);
 #if 0
         ScanState state;
         Node *node;

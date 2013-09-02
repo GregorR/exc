@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 700 /* for fdopen */
 
+#include <stdarg.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -45,6 +46,70 @@ static int match(TransformState *state, Node *node, TrFind *find)
     if (find->notInFunc && find->notInFunc(state, node)) return MATCH_NOTIN;
 
     return MATCH_NO;
+}
+
+/* resize a node */
+Node *trResize(Node *node, size_t to)
+{
+    size_t i;
+    Node *nnode = newNode(node->parent, node->type, node->tok, to);
+
+    for (i = 0; node->children[i] && i < to; i++) {
+        nnode->children[i] = node->children[i];
+        nnode->children[i]->parent = node;
+        node->children[i] = NULL;
+    }
+
+    /* make sure we don't lose any children */
+    if (node->children[i]) {
+        for (; node->children[i]; i++) {
+            freeNode(node->children[i]);
+            node->children[i] = NULL;
+        }
+    }
+
+    /* update it in the parent */
+    if (node->parent) {
+        Node *pnode = node->parent;
+        for (i = 0; pnode->children[i] && pnode->children[i] != node; i++);
+        if (pnode->children[i]) pnode->children[i] = nnode;
+    }
+
+    /* free the old node */
+    freeNode(node);
+
+    return nnode;
+}
+
+/* append nodes as children of an existing node */
+Node *trAppend(Node *parent, ...)
+{
+    struct Buffer_Nodep buf;
+    Node *child;
+    va_list ap;
+    size_t i, ni;
+
+    INIT_BUFFER(buf);
+
+    /* first collect all the nodes */
+    va_start(ap, parent);
+    while ((child = va_arg(ap, Node *)))
+        WRITE_ONE_BUFFER(buf, child);
+    va_end(ap);
+
+    /* now resize the parent node */
+    for (i = 0; parent->children[i]; i++);
+    parent = trResize(parent, i + buf.bufused);
+
+    /* and add the new nodes */
+    for (ni = 0; ni < buf.bufused; ni++, i++) {
+        parent->children[i] = buf.buf[ni];
+        parent->children[i]->parent = parent;
+    }
+
+    FREE_BUFFER(buf);
+
+    return parent;
 }
 
 /* perform the given transformation on matching nodes */

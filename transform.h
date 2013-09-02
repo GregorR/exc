@@ -38,6 +38,12 @@ struct TransformState_ {
 
 /* utility functions for transforms */
 
+/* resize a node */
+Node *trResize(Node *node, size_t to);
+
+/* append nodes as children of an existing node, which can replace the node */
+Node *trAppend(Node *parent, ...);
+
 /* a find request */
 #define TR_FIND_MATCH_CT 4
 typedef struct TrFind_ {
