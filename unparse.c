@@ -17,7 +17,7 @@ const char *tokenName(int n)
 }
 
 /* convert a node type (numeric) to a name */
-static const char *nodeName(int n)
+const char *nodeName(int n)
 {
     switch (n) {
 #define NODE(x) case NODE_ ## x: return #x;

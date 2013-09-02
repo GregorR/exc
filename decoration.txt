@@ -71,7 +71,7 @@ Decorator expressions: Decorators themselves may serve as an expression.
 Decorator operator: They may be used as an operator, with precedence just
 higher than multiplication.
 
-Decorator for declaration: Decorating otherwise-normal declarations.
+Declaration decorators: Decorating otherwise-normal declarations.
 
 Decorator declaration: Decorators may serve as declarations. When ambiguous
 with expression declarators, the latter is preferred.

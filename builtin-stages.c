@@ -13,7 +13,9 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then)
     size_t i;
 
     /* found an @import, make sure it's a declaration */
-    if (node->parent->type != NODE_DECORATION_DECLARATION) return node;
+    if (!node->parent ||
+        !node->parent->parent ||
+        node->parent->parent->type != NODE_DECORATION_DECLARATION) return node;
 
     /* get the filename */
     if (node->children[1]->type != NODE_NIL) {

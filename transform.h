@@ -34,7 +34,6 @@ struct TransformState_ {
     struct Buffer_Transform transforms;
     struct Buffer_charp filenames; /* memory owned by the transform state */
     struct Buffer_Nodep files;
-    Node *node;
 };
 
 /* utility functions for transforms */

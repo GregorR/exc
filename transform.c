@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "builtin-stages.h"
 #include "parse.h"
 #include "transform.h"
 
@@ -103,22 +104,28 @@ TransformState transformFile(char *filename)
     int pipei[2], pipeo[2];
     int tmpi;
     FILE *f;
+    Node *node;
 
     INIT_BUFFER(state.transforms);
     INIT_BUFFER(state.filenames);
     INIT_BUFFER(state.files);
     WRITE_ONE_BUFFER(state.filenames, filename);
 
+    /* first stage just gets all the files input */
     for (i = 0; i < state.filenames.bufused; i++) {
         filename = state.filenames.buf[i];
+
+        /* have we read, preprocessed and parsed the file? */
         if (state.files.bufused <= i) {
             /* we need to read in the file first! */
             struct Buffer_char loader, source;
+            ScanState scanState;
+            char *error;
 
             INIT_BUFFER(loader);
             WRITE_BUFFER(loader, "#include \"", 10);
             WRITE_BUFFER(loader, filename, strlen(filename));
-            WRITE_BUFFER(loader, "\"\n", 2);
+            WRITE_BUFFER(loader, ".exc\"\n", 6);
 
             /* prepare to pipe it into/out of the child */
             SF(tmpi, pipe, -1, (pipei));
@@ -154,7 +161,6 @@ TransformState transformFile(char *filename)
             INIT_BUFFER(source);
             READ_FILE_BUFFER(source, f);
             SF(tmpi, fclose, EOF, (f));
-            SF(tmpi, close, -1, (pipeo[0]));
             WRITE_ONE_BUFFER(source, '\0');
 
             /* and wait for them */
@@ -164,10 +170,25 @@ TransformState transformFile(char *filename)
                 exit(1);
             }
 
-            fprintf(stderr, "%s\n", source.buf);
-            FREE_BUFFER(source);
+            /* now parse it */
+            scanState = newScanState(i);
+            scanState.buf = source;
+
+            error = NULL;
+            node = cparse(&scanState, &error);
+
+            if (!node) {
+                fprintf(stderr, "%s: %s\n", filename, error);
+                FREE_BUFFER(source);
+                continue;
+            }
+
+            WRITE_ONE_BUFFER(state.files, node);
 
         }
+
+        /* run the imports */
+        state.files.buf[i] = transformImportStage(&state, state.files.buf[i]);
     }
 
     return state;
