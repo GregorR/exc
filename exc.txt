@@ -1,0 +1,61 @@
+See decorations.txt for changes to C's syntax.
+
+Builtin decoration stages:
+
+(1) import stage: Parses, reads @import decorators and imports all dependencies.
+(2) extension stage: Reads @extension decorators and loads extension modules.
+[...] extension modules are run
+(+3) raw stage: @rem, @raw and @include decorators replaced.
+(+4) header stage: @public, @header, @private handled.
+
+
+Builtin decorations:
+
+@rem(...)
+    decorator declaration or decorator expression as expression statement
+    Simply removed (comment).
+
+@raw(...)
+    any decoration
+    Raw code which is not parsed (but is tokenized). Dumped directly to
+    resultant C. In the case of an expression decoration which is not an
+    expression statement, is surrounded by parentheses. In the case of an
+    operator decoration, the expression and both subexpressions are surrounded
+    by parentheses.
+
+@include(...);
+    decorator declaration
+    Directly generates a #include.
+
+@import(...);
+    decorator declaration
+    @includes the .h file generated from the imported .exc file, but also
+    parses the .exc file for @extension declarations.
+
+@public
+    declaration decorator
+    Puts a declaration for the associated declaration or definition in the
+    generated .h file. What precisely is added depend on what is declared or
+    defined:
+     * function:
+        A prototype for the function.
+     * variable:
+        An "extern" declaration of the variable.
+     * struct, union, typedef:
+        The entire declaration.
+
+    decorator declaration
+    The preceding whitespace/comments are added to the generated .h file.
+
+@header
+    declaration decorator
+    The associated declaration or definition is added to the generated .h file,
+    and NOT the generated .c file.
+
+    decorator declaration
+    The preceding whitespace/comments are added to the generated .h file, and
+    NOT the generated .c file.
+
+@private
+    declaration decorator or decorator declaration
+    Ignored. For symmetry with @public and @header.

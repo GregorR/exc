@@ -1,4 +1,4 @@
-n1570\.pdf
-.*\.o
-exc
-deps
+^n1570\.pdf$
+.*\.o$
+^exc$
+^deps$
