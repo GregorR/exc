@@ -249,8 +249,9 @@ TransformState transformFile(char *filename)
             WRITE_ONE_BUFFER(command, "gcc");
             WRITE_ONE_BUFFER(command, "-E");
             WRITE_ONE_BUFFER(command, "-undef");
+            WRITE_ONE_BUFFER(command, "-ffreestanding");
             WRITE_ONE_BUFFER(command, "-x");
-            WRITE_ONE_BUFFER(command, "-c");
+            WRITE_ONE_BUFFER(command, "c");
             WRITE_ONE_BUFFER(command, "-");
             WRITE_ONE_BUFFER(command, NULL);
 

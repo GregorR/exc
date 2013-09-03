@@ -37,7 +37,7 @@ struct Buffer_char execBuffered(
         SF(tmpi, close, -1, (pipei[0]));
         SF(tmpi, close, -1, (pipeo[1]));
 
-        SF(tmpi, execlp, -1, ("gcc", "gcc", "-E", "-undef", "-x", "c", "-", NULL));
+        SF(tmpi, execvp, -1, (cmd[0], cmd));
         exit(1);
 
     }
