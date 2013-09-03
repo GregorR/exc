@@ -48,11 +48,23 @@ static int match(TransformState *state, Node *node, TrFind *find)
     return MATCH_NO;
 }
 
+/* replace a node */
+void trReplace(Node *from, Node *to)
+{
+    size_t i;
+    if (from->parent) {
+        Node *pnode = from->parent;
+        for (i = 0; pnode->children[i] && pnode->children[i] != from; i++);
+        if (pnode->children[i]) pnode->children[i] = to;
+        to->parent = pnode;
+    }
+}
+
 /* resize a node */
 Node *trResize(Node *node, size_t to)
 {
     size_t i;
-    Node *nnode = newNode(node->parent, node->type, node->tok, to);
+    Node *nnode = newNode(NULL, node->type, node->tok, to);
 
     for (i = 0; node->children[i] && i < to; i++) {
         nnode->children[i] = node->children[i];
@@ -69,11 +81,7 @@ Node *trResize(Node *node, size_t to)
     }
 
     /* update it in the parent */
-    if (node->parent) {
-        Node *pnode = node->parent;
-        for (i = 0; pnode->children[i] && pnode->children[i] != node; i++);
-        if (pnode->children[i]) pnode->children[i] = nnode;
-    }
+    trReplace(node, nnode);
 
     /* free the old node */
     freeNode(node);

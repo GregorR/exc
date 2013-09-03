@@ -81,9 +81,41 @@ Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
 /* @raw stage */
 static Node *transformRawStageF(TransformState *state, Node *node, int *then)
 {
+    Node *nnode;
+
     /* switch based on which it is */
     char *type = node->children[0]->tok->tok;
+
+    int ptype = 0;
+    if (node->parent) {
+        if (node->parent->type == NODE_DECLARATION_DECORATOR_LIST) {
+            if (node->parent->parent)
+                ptype = node->parent->parent->type;
+        } else {
+            ptype = node->parent->type;
+        }
+    }
+
     if (!strcmp(type, "rem")) {
+        /* decorator declaration or decorator expression as expression statement */
+        if (ptype == NODE_DECORATION_DECLARATION) {
+            node = node->parent->parent;
+            nnode = newNode(NULL, NODE_NIL, NULL, 0);
+            trReplace(node, nnode);
+            freeNode(node);
+            return nnode;
+
+        }
+
+        if (ptype == NODE_EXPRESSION_STATEMENT) {
+            node = node->parent->parent->parent;
+            nnode = newNode(NULL, NODE_NIL, NULL, 0);
+            trReplace(node, nnode);
+            freeNode(node);
+            return nnode;
+        }
+
+        return node;
 
     } else if (!strcmp(type, "raw")) {
 

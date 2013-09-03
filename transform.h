@@ -38,6 +38,9 @@ struct TransformState_ {
 
 /* utility functions for transforms */
 
+/* replace a node */
+void trReplace(Node *from, Node *to);
+
 /* resize a node */
 Node *trResize(Node *node, size_t to);
 

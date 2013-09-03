@@ -31,9 +31,11 @@ int main(int argc, char **argv)
         state = transformFile(file);
 
         /* unparse it */
-        unparsed = cunparse(state.files.buf[0]);
-        fprintf(stderr, "%s\n", unparsed.buf);
-        FREE_BUFFER(unparsed);
+        if (state.files.buf[0]) {
+            unparsed = cunparse(state.files.buf[0]);
+            fprintf(stderr, "%s\n", unparsed.buf);
+            FREE_BUFFER(unparsed);
+        }
 #if 0
         ScanState state;
         Node *node;
