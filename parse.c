@@ -1774,6 +1774,13 @@ CONCAT_LIST(DeclarationList, NODE_DECLARATION_LIST, Declaration)
 PARSER(FunctionDefinition)
 {
     Node *ret, *node;
+
+    if ((node = parseDeclarationDecoratorList(state, parent))) {
+        MKRETN(NODE_DECORATED_FUNCTION_DEFINITION, 2);
+        REQUIREP(1, FunctionDefinition);
+        return ret;
+    }
+
     if (!(node = parseDeclarationSpecifiers(state, parent))) return NULL;
     MKRETN(NODE_FUNCTION_DEFINITION, 4);
     REQUIREP(1, Declarator);

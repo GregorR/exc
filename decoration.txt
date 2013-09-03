@@ -45,6 +45,9 @@ declaration:
     declaration-decorator-list declaration
     declaration-decorator-list ;
 
+function-definition:
+    declaration-decorator-list function-definition
+
 declaration-specifiers:
     declaration-specifiers declaration-decorator-list
 
