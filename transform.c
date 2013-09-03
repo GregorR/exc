@@ -1,12 +1,12 @@
-#define _XOPEN_SOURCE 700 /* for fdopen */
+#define _XOPEN_SOURCE 700 /* for strdup */
 
 #include <stdarg.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #include "builtin-stages.h"
+#include "exec.h"
 #include "parse.h"
 #include "transform.h"
 
@@ -220,10 +220,7 @@ TransformState transformFile(char *filename)
 {
     TransformState state;
     size_t i;
-    pid_t pid, tmpp;
-    int pipei[2], pipeo[2];
     int tmpi;
-    FILE *f;
     Node *node;
 
     INIT_BUFFER(state.transforms);
@@ -239,6 +236,7 @@ TransformState transformFile(char *filename)
         if (state.files.bufused <= i) {
             /* we need to read in the file first! */
             struct Buffer_char loader, source;
+            struct Buffer_charp command;
             ScanState scanState;
             char *error;
 
@@ -247,44 +245,20 @@ TransformState transformFile(char *filename)
             WRITE_BUFFER(loader, filename, strlen(filename));
             WRITE_BUFFER(loader, ".exc\"\n", 6);
 
-            /* prepare to pipe it into/out of the child */
-            SF(tmpi, pipe, -1, (pipei));
-            SF(tmpi, pipe, -1, (pipeo));
+            INIT_BUFFER(command);
+            WRITE_ONE_BUFFER(command, "gcc");
+            WRITE_ONE_BUFFER(command, "-E");
+            WRITE_ONE_BUFFER(command, "-undef");
+            WRITE_ONE_BUFFER(command, "-x");
+            WRITE_ONE_BUFFER(command, "-c");
+            WRITE_ONE_BUFFER(command, "-");
+            WRITE_ONE_BUFFER(command, NULL);
 
-            /* FIXME: the command should be in a spec file! */
-            SF(pid, fork, -1, ());
-            if (pid == 0) {
-                SF(tmpi, close, -1, (pipei[1]));
-                SF(tmpi, close, -1, (pipeo[0]));
-
-                SF(tmpi, dup2, -1, (pipei[0], 0));
-                SF(tmpi, dup2, -1, (pipeo[1], 1));
-
-                SF(tmpi, close, -1, (pipei[0]));
-                SF(tmpi, close, -1, (pipeo[1]));
-
-                SF(tmpi, execlp, -1, ("gcc", "gcc", "-E", "-undef", "-x", "c", "-", NULL));
-                exit(1);
-
-            }
-
-            SF(tmpi, close, -1, (pipei[0]));
-            SF(tmpi, close, -1, (pipeo[1]));
-
-            /* give them the loader */
-            SF(tmpi, write, -1, (pipei[1], loader.buf, loader.bufused));
-            SF(tmpi, close, -1, (pipei[1]));
+            source = execBuffered(command.buf, loader, &tmpi);
             FREE_BUFFER(loader);
-
-            /* read in the preprocessed source */
-            SF(f, fdopen, NULL, (pipeo[0], "r"));
-            INIT_BUFFER(source);
-            READ_FILE_BUFFER(source, f);
-            SF(tmpi, fclose, EOF, (f));
+            FREE_BUFFER(command);
             WRITE_ONE_BUFFER(source, '\0');
 
-            /* and wait for them */
-            SF(tmpp, waitpid, -1, (pid, &tmpi, 0));
             if (tmpi != 0) {
                 fprintf(stderr, "cpp failed!\n");
                 exit(1);
