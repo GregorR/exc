@@ -321,3 +321,20 @@ TransformState transformFile(char *filename)
     return state;
 
 }
+
+/* free a TransformState */
+void freeTransformState(TransformState *state)
+{
+    size_t i;
+
+    FREE_BUFFER(state->transforms);
+
+    for (i = 0; i < state->filenames.bufused; i++)
+        free(state->filenames.buf[i]);
+    FREE_BUFFER(state->filenames);
+
+    for (i = 0; i < state->files.bufused; i++)
+        if (state->files.buf[i])
+            freeNode(state->files.buf[i]);
+    FREE_BUFFER(state->files);
+}

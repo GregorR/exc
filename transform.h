@@ -69,4 +69,7 @@ void transform(TransformState *state, Node *node, TrFind *find, transform_func_t
  * preprocess, and transform */
 TransformState transformFile(char *filename);
 
+/* free a TransformState */
+void freeTransformState(TransformState *state);
+
 #endif

@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 700 /* for strdup */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,9 +19,10 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         TransformState state;
         struct Buffer_char unparsed;
+        char *file;
 
         /* remove .exc */
-        char *file = argv[i];
+        SF(file, strdup, NULL, (argv[i]));
         for (si = 0; file[si]; si++) {
             if (!strcmp(file + si, ".exc")) {
                 file[si] = '\0';
@@ -36,6 +39,8 @@ int main(int argc, char **argv)
             printf("%s\n", unparsed.buf);
             FREE_BUFFER(unparsed);
         }
+
+        freeTransformState(&state);
 #if 0
         ScanState state;
         Node *node;

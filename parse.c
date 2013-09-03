@@ -1967,6 +1967,8 @@ PARSER(DecorationOpenCont)
         buf.buf[i]->parent = ret;
     }
 
+    FREE_BUFFER(buf);
+
     return ret;
 }
 
