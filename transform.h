@@ -14,7 +14,7 @@ BUFFER(Nodep, Node *);
 typedef struct TransformState_ TransformState;
 typedef Node *(*transform_func_t)(TransformState *, Node *, int *then);
 typedef int (*transform_condition_func_t)(TransformState *, Node *);
-typedef Node *(*transform_stage_func_t)(TransformState *, Node *);
+typedef Node *(*transform_stage_func_t)(TransformState *, Node *, int isprimary);
 
 /* "then" options */
 enum {

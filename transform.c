@@ -253,7 +253,15 @@ TransformState transformFile(char *filename)
         }
 
         /* run the imports */
-        state.files.buf[i] = transformImportStage(&state, state.files.buf[i]);
+        state.files.buf[i] = transformImportStage(&state, state.files.buf[i], (i == 0));
+    }
+
+    /* @extension unimplemented */
+
+    /* finally, the @raw stage */
+    for (i = state.files.bufused - 1; i < state.files.bufused; i--) {
+        fprintf(stderr, "%s\n", state.filenames.buf[i]);
+        state.files.buf[i] = transformRawStage(&state, state.files.buf[i], (i == 0));
     }
 
     return state;

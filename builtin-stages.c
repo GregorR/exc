@@ -60,7 +60,7 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then)
     return node;
 }
 
-Node *transformImportStage(TransformState *state, Node *node)
+Node *transformImportStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
 
@@ -73,14 +73,40 @@ Node *transformImportStage(TransformState *state, Node *node)
 }
 
 /* @extension stage */
-Node *transformExtensionStage(TransformState *state, Node *node)
+Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
 {
     return node;
 }
 
 /* @raw stage */
-Node *transformRawStage(TransformState *state, Node *node)
+static Node *transformRawStageF(TransformState *state, Node *node, int *then)
 {
+    /* switch based on which it is */
+    char *type = node->children[0]->tok->tok;
+    if (!strcmp(type, "rem")) {
+
+    } else if (!strcmp(type, "raw")) {
+
+    } else if (!strcmp(type, "include")) {
+
+    }
+
+    return node;
+}
+
+Node *transformRawStage(TransformState *state, Node *node, int isprimary)
+{
+    TrFind find;
+
+    if (!isprimary) return node;
+
+    /* search for @rem, @raw and @include */
+    memset(&find, 0, sizeof(find));
+    find.matchDecoration[0] = "rem";
+    find.matchDecoration[1] = "raw";
+    find.matchDecoration[2] = "include";
+    transform(state, node, &find, transformRawStageF);
+
     return node;
 }
 
