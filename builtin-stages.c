@@ -220,6 +220,39 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then)
         }
 
     } else if (!strcmp(type, "include")) {
+        /* must be a decoration declaration */
+        if (ptype == NODE_DECORATION_DECLARATION) {
+            struct Buffer_char fname, fnamestr;
+            Node *pnode;
+
+            /* manufacture a proper replacement */
+            Node *repl = newNode(NULL, NODE_DECORATION_OPEN_CONT, NULL, 4);
+
+            repl->children[0] = newNode(repl, NODE_TOK, newToken(TOK_PUNC_UNKNOWN, 1, "", "#"), 0);
+            repl->children[1] = newNode(repl, NODE_TOK, newToken(TOK_ID, 1, "", "include"), 0);
+            repl->children[3] = newNode(repl, NODE_TOK, newToken(TOK_PUNC_UNKNOWN, 1, "\n", ""), 0);
+
+            /* unparse the raw part to get the filename */
+            INIT_BUFFER(fnamestr);
+            WRITE_ONE_BUFFER(fnamestr, '"');
+            if (node->children[1] && node->children[1]->children[0]) {
+                fname = cunparse(node->children[1]->children[0]);
+                WRITE_BUFFER(fnamestr, fname.buf, fname.bufused - 1);
+                FREE_BUFFER(fname);
+            }
+            WRITE_BUFFER(fnamestr, "\"", 2);
+
+            /* then make that a node */
+            repl->children[2] = newNode(repl, NODE_TOK, newToken(TOK_STR_LITERAL, 1, " ", fnamestr.buf), 0);
+            FREE_BUFFER(fnamestr);
+
+            /* and replace it */
+            pnode = node->parent->parent;
+            trReplace(pnode, repl, 1);
+            freeNode(pnode);
+            return repl;
+
+        }
 
     }
 
