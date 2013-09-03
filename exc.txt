@@ -21,7 +21,8 @@ Builtin decorations:
     resultant C. In the case of an expression decoration which is not an
     expression statement, is surrounded by parentheses. In the case of an
     operator decoration, the expression and both subexpressions are surrounded
-    by parentheses.
+    by parentheses. In the case of a decorator declaration, the terminating
+    semicolon is omitted.
 
 @include(...);
     decorator declaration

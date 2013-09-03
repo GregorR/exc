@@ -38,8 +38,11 @@ struct TransformState_ {
 
 /* utility functions for transforms */
 
+/* parenthesize a node */
+Node *trParenthesize(Node *node);
+
 /* replace a node */
-void trReplace(Node *from, Node *to);
+void trReplace(Node *from, Node *to, int preserveWhitespace);
 
 /* resize a node */
 Node *trResize(Node *node, size_t to);

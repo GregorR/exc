@@ -33,7 +33,7 @@ int main(int argc, char **argv)
         /* unparse it */
         if (state.files.buf[0]) {
             unparsed = cunparse(state.files.buf[0]);
-            fprintf(stderr, "%s\n", unparsed.buf);
+            printf("%s\n", unparsed.buf);
             FREE_BUFFER(unparsed);
         }
 #if 0

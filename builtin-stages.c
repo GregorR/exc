@@ -101,7 +101,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then)
         if (ptype == NODE_DECORATION_DECLARATION) {
             node = node->parent->parent;
             nnode = newNode(NULL, NODE_NIL, NULL, 0);
-            trReplace(node, nnode);
+            trReplace(node, nnode, 1);
             freeNode(node);
             return nnode;
 
@@ -110,7 +110,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then)
         if (ptype == NODE_EXPRESSION_STATEMENT) {
             node = node->parent->parent->parent;
             nnode = newNode(NULL, NODE_NIL, NULL, 0);
-            trReplace(node, nnode);
+            trReplace(node, nnode, 1);
             freeNode(node);
             return nnode;
         }
@@ -118,6 +118,106 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then)
         return node;
 
     } else if (!strcmp(type, "raw")) {
+        /* expression which is not an expression statement */
+        if ((node->parent && node->parent->type != NODE_DECLARATION_DECORATOR_LIST) &&
+            ptype != NODE_DECORATION_OP && ptype != NODE_EXPRESSION_STATEMENT) {
+            Node *repl;
+
+            if (node->children[1] && node->children[1]->children[0]) {
+                /* we have an open, so use it */
+                repl = trParenthesize(node->children[1]->children[0]);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+
+            } else {
+                /* just an empty () */
+                repl = trParenthesize(newNode(NULL, NODE_NIL, NULL, 0));
+
+            }
+
+            trReplace(node, repl, 1);
+            freeNode(node);
+            return repl;
+
+        }
+
+        /* operator declaration */
+        else if (ptype == NODE_DECORATION_OP) {
+            Node *repl;
+
+            /* replace the node itself with its open part */
+            if (node->children[1] && node->children[1]->children[0]) {
+                repl = node->children[1]->children[0];
+                trReplace(node, repl, 1);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+                freeNode(node);
+                node = repl;
+            } else {
+                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                trReplace(node, repl, 1);
+                freeNode(node);
+                node = repl;
+            }
+            node = node->parent;
+
+            /* surround both sides in parens */
+            node->children[0] = trParenthesize(node->children[0]);
+            node->children[0]->parent = node;
+            node->children[2] = trParenthesize(node->children[2]);
+            node->children[2]->parent = node;
+
+            /* and parenthesize the entire node */
+            repl = trParenthesize(node);
+            trReplace(node, repl, 1);
+            node->parent = repl;
+
+            return node;
+
+        }
+
+        /* decorator declaration */
+        else if (ptype == NODE_DECORATION_DECLARATION) {
+            Node *pnode = node->parent->parent;
+
+            if (node->children[1] && node->children[1]->children[0]) {
+                Node *repl = node->children[1]->children[0];
+                trReplace(pnode, repl, 1);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+                freeNode(pnode);
+                return repl;
+
+            } else {
+                Node *repl = newNode(NULL, NODE_NIL, NULL, 0);
+                trReplace(pnode, repl, 1);
+                freeNode(pnode);
+                return repl;
+
+            }
+
+        }
+
+        /* otherwise, just replace it */
+        else {
+            Node *repl;
+            if (node->children[1] && node->children[1]->children[0]) {
+                struct Buffer_char test;
+                test = cunparse(node->children[1]->children[0]);
+                FREE_BUFFER(test);
+
+                repl = node->children[1]->children[0];
+                trReplace(node, repl, 1);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+                freeNode(node);
+
+            } else {
+                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                trReplace(node, repl, 1);
+                freeNode(node);
+
+            }
+
+            return repl;
+
+        }
 
     } else if (!strcmp(type, "include")) {
 

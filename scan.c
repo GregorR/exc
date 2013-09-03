@@ -73,12 +73,15 @@ static char *getWhite(ScanState *state)
     size_t i = fi;
     struct Buffer_char *buf = &state->buf;
     char c = buf->buf[i];
+    int lastWasNewline = (i == 0);
 
     if (!c) return strdup("");
 
     while (ciswhite(c) ||
            (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*')) ||
-           (c == '#')) {
+           (lastWasNewline && c == '#')) {
+        lastWasNewline = 0;
+
         if (c == '/') {
             if (buf->buf[i+1] == '/') {
                 for (i+=2; buf->buf[i] && buf->buf[i] != '\n'; i++) {
@@ -93,6 +96,10 @@ static char *getWhite(ScanState *state)
             for (i++; buf->buf[i] && buf->buf[i] != '\n'; i++) {
                 if (buf->buf[i] == '\\' && buf->buf[i+1]) i++;
             }
+
+        } else if (c == '\n') {
+            lastWasNewline = 1;
+            i++;
 
         } else i++;
 

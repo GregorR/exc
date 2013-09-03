@@ -16,40 +16,18 @@ enum {
     MATCH_NOTIN
 };
 
-static int match(TransformState *state, Node *node, TrFind *find)
+/* parenthesize a node */
+Node *trParenthesize(Node *node)
 {
-    int i;
-
-    /* first try node type match */
-    for (i = 0; i < TR_FIND_MATCH_CT; i++) {
-        if (find->matchNode[i] == node->type) return MATCH_MATCH;
-        if (find->notInNode[i] == node->type) return MATCH_NOTIN;
-    }
-
-    /* now if it's a decorator, try matching it */
-    if (node->type == NODE_EXPRESSION_DECORATOR ||
-        node->type == NODE_DECLARATION_DECORATOR) {
-        /* the first child is a decoration name, check it */
-        const char *dName = node->children[0]->tok->tok;
-
-        for (i = 0; i < TR_FIND_MATCH_CT &&
-                    (find->matchDecoration[i] || find->notInDecoration[i]); i++) {
-            if (find->matchDecoration[i] &&
-                !strcmp(find->matchDecoration[i], dName)) return MATCH_MATCH;
-            if (find->notInDecoration[i] &&
-                !strcmp(find->notInDecoration[i], dName)) return MATCH_NOTIN;
-        }
-    }
-
-    /* and maybe it'll provide functions */
-    if (find->matchFunc && find->matchFunc(state, node)) return MATCH_MATCH;
-    if (find->notInFunc && find->notInFunc(state, node)) return MATCH_NOTIN;
-
-    return MATCH_NO;
+    Node *ret = newNode(NULL, NODE_PAREN, newToken(TOK_LPAREN, 1, NULL, "("), 2);
+    node->parent = ret;
+    ret->children[0] = node;
+    ret->children[1] = newNode(ret, NODE_TOK, newToken(TOK_RPAREN, 1, NULL, ")"), 0);
+    return ret;
 }
 
 /* replace a node */
-void trReplace(Node *from, Node *to)
+void trReplace(Node *from, Node *to, int preserveWhitespace)
 {
     size_t i;
     if (from->parent) {
@@ -58,6 +36,42 @@ void trReplace(Node *from, Node *to)
         if (pnode->children[i]) pnode->children[i] = to;
         to->parent = pnode;
     }
+
+    if (preserveWhitespace) {
+        /* attempt to preserve the whitespace by drilling down until we find
+         * the leftmost tok, then taking its whitespace */
+        char *keepWhitespace = "";
+        Node *n = from;
+
+        while (n) {
+            if (n->tok) {
+                if (n->tok->pre)
+                    keepWhitespace = n->tok->pre;
+                break;
+            }
+            n = n->children[0];
+        }
+
+        if (keepWhitespace[0]) {
+            n = to;
+
+            while (n) {
+                if (n->tok) {
+                    char *nw;
+                    if (n->tok->pre) {
+                        SF(nw, malloc, NULL, (strlen(keepWhitespace) + strlen(n->tok->pre)));
+                        sprintf(nw, "%s%s", keepWhitespace, n->tok->pre);
+                    } else {
+                        SF(nw, strdup, NULL, (keepWhitespace));
+                    }
+                    free(n->tok->pre);
+                    n->tok->pre = nw;
+                    break;
+                }
+                n = n->children[0];
+            }
+        }
+    }
 }
 
 /* resize a node */
@@ -65,10 +79,11 @@ Node *trResize(Node *node, size_t to)
 {
     size_t i;
     Node *nnode = newNode(NULL, node->type, node->tok, to);
+    node->tok = NULL;
 
     for (i = 0; node->children[i] && i < to; i++) {
         nnode->children[i] = node->children[i];
-        nnode->children[i]->parent = node;
+        nnode->children[i]->parent = nnode;
         node->children[i] = NULL;
     }
 
@@ -81,7 +96,7 @@ Node *trResize(Node *node, size_t to)
     }
 
     /* update it in the parent */
-    trReplace(node, nnode);
+    trReplace(node, nnode, 0);
 
     /* free the old node */
     freeNode(node);
@@ -118,6 +133,38 @@ Node *trAppend(Node *parent, ...)
     FREE_BUFFER(buf);
 
     return parent;
+}
+
+static int match(TransformState *state, Node *node, TrFind *find)
+{
+    int i;
+
+    /* first try node type match */
+    for (i = 0; i < TR_FIND_MATCH_CT; i++) {
+        if (find->matchNode[i] == node->type) return MATCH_MATCH;
+        if (find->notInNode[i] == node->type) return MATCH_NOTIN;
+    }
+
+    /* now if it's a decorator, try matching it */
+    if (node->type == NODE_EXPRESSION_DECORATOR ||
+        node->type == NODE_DECLARATION_DECORATOR) {
+        /* the first child is a decoration name, check it */
+        const char *dName = node->children[0]->tok->tok;
+
+        for (i = 0; i < TR_FIND_MATCH_CT &&
+                    (find->matchDecoration[i] || find->notInDecoration[i]); i++) {
+            if (find->matchDecoration[i] &&
+                !strcmp(find->matchDecoration[i], dName)) return MATCH_MATCH;
+            if (find->notInDecoration[i] &&
+                !strcmp(find->notInDecoration[i], dName)) return MATCH_NOTIN;
+        }
+    }
+
+    /* and maybe it'll provide functions */
+    if (find->matchFunc && find->matchFunc(state, node)) return MATCH_MATCH;
+    if (find->notInFunc && find->notInFunc(state, node)) return MATCH_NOTIN;
+
+    return MATCH_NO;
 }
 
 /* perform the given transformation on matching nodes */
@@ -255,6 +302,7 @@ TransformState transformFile(char *filename)
                 FREE_BUFFER(source);
                 continue;
             }
+            FREE_BUFFER(source);
 
             WRITE_ONE_BUFFER(state.files, node);
 
@@ -267,10 +315,8 @@ TransformState transformFile(char *filename)
     /* @extension unimplemented */
 
     /* finally, the @raw stage */
-    for (i = state.files.bufused - 1; i < state.files.bufused; i--) {
-        fprintf(stderr, "%s\n", state.filenames.buf[i]);
+    for (i = state.files.bufused - 1; i < state.files.bufused; i--)
         state.files.buf[i] = transformRawStage(&state, state.files.buf[i], (i == 0));
-    }
 
     return state;
 

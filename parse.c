@@ -1949,6 +1949,10 @@ PARSER(DecorationOpenCont)
                 break;
             }
 
+        } else if (tok->type == TOK_TERM) {
+            pushToken(state, tok);
+            break;
+
         }
 
         node = newNode(parent, NODE_TOK, tok, 0); /* FIXME: NULL */
