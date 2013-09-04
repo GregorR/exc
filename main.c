@@ -72,6 +72,8 @@ int main(int argc, char **argv)
                     fprintf(stderr, "Unrecognized exc flag: %s\n", arg);
                     exit(1);
                 }
+            } else if (!strcmp(arg, "-c")) {
+                compileOnly = 1;
             } else if (!strcmp(arg, "-o") && narg) {
                 outFile = narg;
                 i++;
