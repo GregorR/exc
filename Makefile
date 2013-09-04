@@ -1,11 +1,13 @@
 CC=gcc
+EXCFLAGS=
 CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic \
  -Wno-unused-function
 
 SRC=\
-	builtin-stages.c exec.c main.c node.c parse.c scan.c spec.c \
-	transform.c unparse.c whereami.c
-OBJS=$(SRC:.c=.o)
+	builtin-stages.exc exec.exc main.exc node.exc parse.exc scan.exc \
+	spec.exc transform.exc unparse.exc whereami.exc
+CSRC=$(SRC:.exc=.c)
+OBJS=$(SRC:.exc=.o)
 
 all: exc
 
@@ -13,6 +15,9 @@ include deps
 
 exc: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o exc
+
+%.c: %.exc
+	./exc $(EXCFLAGS) $(CFLAGS) -eonly $<
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
