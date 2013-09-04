@@ -15,6 +15,8 @@ following exceptions:
  * Empty translation units (i.e., files empty of all but whitespace) are
    allowed in exc.
 
+ * Old-style (K&R) function definitions are not allowed.
+
  * C has a rather famous typedef ambiguity. exc does not, and, in fact, cannot
    resolve this ambiguity, as it does not see all sources before parsing. When
    ambiguous, exc prefers a type parsing to a value parsing.

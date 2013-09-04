@@ -1782,10 +1782,9 @@ PARSER(FunctionDefinition)
     }
 
     if (!(node = parseDeclarationSpecifiers(state, parent))) return NULL;
-    MKRETN(NODE_FUNCTION_DEFINITION, 4);
+    MKRETN(NODE_FUNCTION_DEFINITION, 3);
     REQUIREP(1, Declarator);
-    REQUIREP(2, DeclarationListOpt);
-    REQUIREP(3, CompoundStatement);
+    REQUIREP(2, CompoundStatement);
     return ret;
 }
 

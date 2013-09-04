@@ -132,6 +132,30 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
             return node;
         }
 
+        if (pnode->type == NODE_DECORATED_FUNCTION_DEFINITION) {
+            /* need to turn the function definition into a function declaration */
+            Node *decl;
+            repl = newNode(NULL, NODE_DECORATED_DECLARATION, NULL, 2);
+            repl->children[0] = trDupNode(node->parent);
+            repl->children[0]->parent = repl;
+            decl = newNode(repl, NODE_DECLARATION, NULL, 3);
+            repl->children[1] = decl;
+
+            /* copy in the declaration specifiers */
+            decl->children[0] = trDupNode(pnode->children[1]->children[0]);
+
+            /* the declarator becomes the only member of an init-declarator-list */
+            decl->children[1] = newNode(decl, NODE_INIT_DECLARATOR_LIST, NULL, 1);
+            decl->children[1]->children[0] = trDupNode(pnode->children[1]->children[1]);
+            decl->children[1]->children[0]->parent = decl->children[1];
+
+            /* and of course, round it off with a semicolon */
+            decl->children[2] = newNode(decl, NODE_TOK, newToken(TOK_SEMICOLON, 1, "", ";"), 0);
+
+            trAppend(state->header->children[0], repl, NULL);
+
+            return node;
+        }
 
     }
 
