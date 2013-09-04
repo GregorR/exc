@@ -204,14 +204,38 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
+    char *ifdeffn;
+    struct Buffer_char ifdef;
+    size_t i;
 
     if (!isprimary) return node;
 
-    /* first make the header node */
+    /* transform the filename into one suitable for #ifdefing */
+    SF(ifdeffn, strdup, NULL, (state->filenames.buf[0]));
+    for (i = 0; ifdeffn[i]; i++) {
+        char c = ifdeffn[i];
+        if ((c >= 'A' && c <= 'Z') ||
+            (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') ||
+            c == '_') continue;
+        ifdeffn[i] = '_';
+    }
+
+    /* and make the guard */
+    INIT_BUFFER(ifdef);
+    WRITE_BUFFER(ifdef, "#ifndef EXC_", 12);
+    WRITE_BUFFER(ifdef, ifdeffn, strlen(ifdeffn));
+    WRITE_BUFFER(ifdef, "\n#define EXC_", 13);
+    WRITE_BUFFER(ifdef, ifdeffn, strlen(ifdeffn));
+    WRITE_BUFFER(ifdef, " 1\n", 4);
+    free(ifdeffn);
+
+    /* make the header node */
     state->header = newNode(NULL, NODE_FILE, NULL, 2);
-    state->header->children[0] = newNode(state->header, NODE_TRANSLATION_UNIT, NULL, 0);
+    state->header->children[0] = newNode(state->header, NODE_TRANSLATION_UNIT,
+                                         newToken(TOK_PUNC_UNKNOWN, 0, ifdef.buf, NULL), 0);
     state->header->children[1] = newNode(state->header, NODE_TOK,
-                                         newToken(TOK_TERM, 1, "\n", ""), 0);
+                                         newToken(TOK_TERM, 1, "\n#endif\n", ""), 0);
 
     /* search for @public, @header, @private */
     memset(&find, 0, sizeof(find));
