@@ -213,7 +213,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
-    char *ifdeffn;
+    char *ifdeffn, *includeln;
     struct Buffer_char ifdef;
     size_t i;
 
@@ -245,6 +245,11 @@ Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
                                          newToken(TOK_PUNC_UNKNOWN, 0, ifdef.buf, NULL), 0);
     state->header->children[1] = newNode(state->header, NODE_TOK,
                                          newToken(TOK_TERM, 1, "\n#endif\n", ""), 0);
+
+    /* and force the C file to include the header */
+    SF(includeln, malloc, NULL, (strlen(state->filenames.buf[0]) + 17));
+    sprintf(includeln, "#include \"%s.h\"\n", state->filenames.buf[0]);
+    trPrepend(node->children[0], newNode(NULL, NODE_TOK, newToken(TOK_PUNC_UNKNOWN, 0, includeln, NULL), 0));
 
     /* search for @public, @header, @private */
     memset(&find, 0, sizeof(find));
