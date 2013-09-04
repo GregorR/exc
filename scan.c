@@ -89,6 +89,7 @@ static char *getWhite(ScanState *state)
                 }
             } else {
                 for (i++; buf->buf[i+1] && (buf->buf[i] != '*' || buf->buf[i+1] != '/'); i++);
+                if (buf->buf[i] == '*' && buf->buf[i+1] == '/') i += 2;
             }
 
         } else if (c == '#') {
