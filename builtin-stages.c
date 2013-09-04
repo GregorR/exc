@@ -141,7 +141,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
             int includesExtern = 0;
             size_t i;
             Node *declSpec;
-            if (pnode->children[1]->children[1]->type == NODE_INIT_DECLARATOR_LIST) hasInitDeclaratorList = 1;
+            if (pnode->children[1]->children[1]->children[0]) hasInitDeclaratorList = 1;
             /* go over the declaration specifiers */
             declSpec = pnode->children[1]->children[0];
             for (i = 0; declSpec->children[i]; i++) {

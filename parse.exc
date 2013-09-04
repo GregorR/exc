@@ -11,7 +11,7 @@
 
 @public @raw(BUFFER(Tokenp, Token *););
 
-@header enum Nodes {
+@public enum Nodes {
     NODE_FIRST = 0,
 
 #define NODE(x) NODE_ ## x,
