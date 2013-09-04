@@ -17,7 +17,7 @@ exc: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o exc
 
 %.c: %.exc
-	./exc $(EXCFLAGS) $(CFLAGS) -eonly $<
+	-./exc $(EXCFLAGS) $(CFLAGS) -eonly $<
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
