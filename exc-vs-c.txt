@@ -1,0 +1,20 @@
+exc is based on C, and is syntactically almost identical to C, with the
+following exceptions:
+
+ * First and most obviously, exc supports decorators. See decoration.txt for
+   the description of their syntax.
+
+ * exc's scanner does not support digraphs or trigraphs, neither of which were
+   ever good features in the first place.
+
+ * exc's scanner requires /* */ comments to have the '/' immediately next to
+   the '*', with no intervening '\' and newline.
+
+ * Empty structs and unions (e.g., struct Foo {}) are allowed in exc.
+
+ * Empty translation units (i.e., files empty of all but whitespace) are
+   allowed in exc.
+
+ * C has a rather famous typedef ambiguity. exc does not, and, in fact, cannot
+   resolve this ambiguity, as it does not see all sources before parsing. When
+   ambiguous, exc prefers a type parsing to a value parsing.

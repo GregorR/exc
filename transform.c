@@ -135,6 +135,38 @@ Node *trAppend(Node *parent, ...)
     return parent;
 }
 
+/* duplicate a tree of nodes */
+Node *trDupNode(Node *node)
+{
+    size_t i;
+    Node *ret;
+    Token *tok = NULL;
+
+    /* first duplicate the token */
+    if (node->tok) {
+        tok = newToken(node->tok->type, 1, node->tok->pre, node->tok->tok);
+        tok->idx = node->tok->idx;
+        tok->f = node->tok->f;
+        tok->l = node->tok->l;
+        tok->c = node->tok->c;
+    }
+
+    /* count children */
+    for (i = 0; node->children[i]; i++);
+
+    /* allocate the new node */
+    ret = newNode(NULL, node->type, tok, i);
+
+    /* and copy children */
+    for (i = 0; node->children[i]; i++) {
+        Node *c = trDupNode(node->children[i]);
+        c->parent = ret;
+        ret->children[i] = c;
+    }
+
+    return ret;
+}
+
 static int match(TransformState *state, Node *node, TrFind *find)
 {
     int i;
@@ -282,8 +314,12 @@ TransformState transformFile(Spec *spec, char *const cflags[], char *filename)
 
     /* @extension unimplemented */
 
+    /* header stage */
+    for (i = 0; i < state.files.bufused; i++)
+        state.files.buf[i] = transformHeaderStage(&state, state.files.buf[i], (i == 0));
+
     /* finally, the @raw stage */
-    for (i = state.files.bufused - 1; i < state.files.bufused; i--)
+    for (i = 0; i < state.files.bufused; i++)
         state.files.buf[i] = transformRawStage(&state, state.files.buf[i], (i == 0));
 
     return state;

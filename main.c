@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     char *bindir, *binfil;
     Spec *spec;
     struct Buffer_charp cflags,
-        excfiles, excfileso,
+        excfiles, excfileso, excfilesoh,
         cfiles, cfileso,
         ofiles;
 
@@ -60,8 +60,14 @@ int main(int argc, char **argv)
                     excOnly = 1;
 
                 } else if (!strcmp(arg, "-ec-prefix") && narg) {
+                    char *ipath;
                     cPrefix = narg;
                     i++;
+
+                    /* this also needs to be an -I path */
+                    SF(ipath, malloc, NULL, (strlen(cPrefix) + 4));
+                    sprintf(ipath, "-I%s", cPrefix);
+                    WRITE_ONE_BUFFER(cflags, ipath);
 
                 } else if (!strcmp(arg, "-eo-prefix") && narg) {
                     oPrefix = narg;
@@ -150,8 +156,9 @@ int main(int argc, char **argv)
     }
 
     INIT_BUFFER(excfileso);
+    INIT_BUFFER(excfilesoh);
     for (si = 0; si < excfiles.bufused; si++) {
-        char *excfile, *cfile, *ofile, *ext;
+        char *excfile, *cfile, *hfile, *ofile, *ext;
         excfile = excfiles.buf[si];
 
         SF(cfile, malloc, NULL, (strlen(cPrefix) + strlen(excfile) + 1));
@@ -161,6 +168,13 @@ int main(int argc, char **argv)
             strcpy(ext, ".c");
         WRITE_ONE_BUFFER(excfileso, cfile);
         WRITE_ONE_BUFFER(cfiles, cfile);
+
+        SF(hfile, malloc, NULL, (strlen(cPrefix + strlen(excfile) + 1)));
+        sprintf(hfile, "%s%s", cPrefix, excfile);
+        ext = strrchr(hfile, '.');
+        if (ext && !strcmp(ext, ".exc")) 
+            strcpy(ext, ".h");
+        WRITE_ONE_BUFFER(excfilesoh, hfile);
 
         SF(ofile, malloc, NULL, (strlen(oPrefix) + strlen(excfile) + 1));
         sprintf(ofile, "%s%s", oPrefix, excfile);
@@ -193,9 +207,25 @@ int main(int argc, char **argv)
             unparsed.bufused--;
 
             /* write it */
-            f = fopen(excfileso.buf[si], "w");
+            SFE(f, fopen, NULL, excfileso.buf[si], (excfileso.buf[si], "w"));
             if (fwrite(unparsed.buf, 1, unparsed.bufused, f) != unparsed.bufused) {
                 perror(excfileso.buf[si]);
+                exit(1);
+            }
+            fclose(f);
+            FREE_BUFFER(unparsed);
+        }
+
+        /* unparse the .h file */
+        if (state.header) {
+            FILE *f;
+            struct Buffer_char unparsed = cunparse(state.header);
+            unparsed.bufused--;
+
+            /* write it */
+            SFE(f, fopen, NULL, excfilesoh.buf[si], (excfilesoh.buf[si], "w"));
+            if (fwrite(unparsed.buf, 1, unparsed.bufused, f) != unparsed.bufused) {
+                perror(excfilesoh.buf[si]);
                 exit(1);
             }
             fclose(f);

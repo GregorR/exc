@@ -52,6 +52,9 @@ Node *trResize(Node *node, size_t to);
 /* append nodes as children of an existing node, which can replace the node */
 Node *trAppend(Node *parent, ...);
 
+/* duplicate a tree of nodes */
+Node *trDupNode(Node *node);
+
 /* a find request */
 #define TR_FIND_MATCH_CT 4
 typedef struct TrFind_ {

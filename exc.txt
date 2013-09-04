@@ -5,8 +5,8 @@ Builtin decoration stages:
 (1) import stage: Parses, reads @import decorators and imports all dependencies.
 (2) extension stage: Reads @extension decorators and loads extension modules.
 [...] extension modules are run
-(+3) raw stage: @rem, @raw and @include decorators replaced.
-(+4) header stage: @public, @header, @private handled.
+(+3) header stage: @public, @header, @private handled.
+(+4) raw stage: @rem, @raw and @include decorators replaced.
 
 
 Builtin decorations:
@@ -34,10 +34,12 @@ Builtin decorations:
     parses the .exc file for @extension declarations.
 
 @public
-    declaration decorator
+    declaration decorator or decorator declaration
     Puts a declaration for the associated declaration or definition in the
     generated .h file. What precisely is added depend on what is declared or
     defined:
+     * decorator declaration:
+        All other decorators are added to the header.
      * function-definition:
         A prototype for the function.
      * declaration with init-declarator-list, no "extern" or "typedef":
@@ -54,8 +56,8 @@ Builtin decorations:
     and NOT the generated .c file.
 
     decorator declaration
-    The preceding whitespace/comments are added to the generated .h file, and
-    NOT the generated .c file.
+    The preceding whitespace/comments and any other decorators are added to the
+    generated .h file, and NOT the generated .c file.
 
 @private
     declaration decorator or decorator declaration

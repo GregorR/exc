@@ -9,6 +9,9 @@ Node *transformImportStage(TransformState *state, Node *node, int isprimary);
 /* @extension stage */
 Node *transformExtensionStage(TransformState *state, Node *node, int isprimary);
 
+/* header stage */
+Node *transformHeaderStage(TransformState *state, Node *node, int isprimary);
+
 /* @raw stage */
 Node *transformRawStage(TransformState *state, Node *node, int isprimary);
 

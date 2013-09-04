@@ -78,6 +78,88 @@ Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
     return node;
 }
 
+/* header stage */
+Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *arg)
+{
+    int ispublic = 0, isheader = 0, isprivate = 0;
+    char *stype;
+    Node *repl;
+
+    /* first, make sure it's an acceptable type */
+    if (!node->parent ||
+        node->parent->type != NODE_DECLARATION_DECORATOR_LIST ||
+        !node->parent->parent ||
+        (node->parent->parent->type != NODE_DECORATED_DECLARATION &&
+         node->parent->parent->type != NODE_DECORATED_FUNCTION_DEFINITION &&
+         node->parent->parent->type != NODE_DECORATION_DECLARATION))
+        return node;
+
+    /* remember what type of node it is */
+    stype = node->children[0]->tok->tok;
+    if (!strcmp(stype, "public")) {
+        ispublic = 1;
+    } else if (!strcmp(stype, "header")) {
+        isheader = 1;
+    } else {
+        isprivate = 1;
+    }
+
+    /* we always want to remove the node itself */
+    repl = newNode(NULL, NODE_NIL, NULL, 0);
+    trReplace(node, repl, 1);
+    freeNode(node);
+    node = repl;
+
+    /* if it was @private, we're already done */
+    if (isprivate) return node;
+
+    /* if it was @header, move the whole thing into the header */
+    if (isheader) {
+        repl = newNode(NULL, NODE_NIL, NULL, 0);
+        node = node->parent->parent;
+        trReplace(node, repl, 0);
+        trAppend(state->header->children[0], node, NULL);
+        return repl;
+    }
+
+    /* and @public is the most complicated */
+    if (ispublic) {
+        Node *pnode = node->parent->parent;
+        if (pnode->type == NODE_DECORATION_DECLARATION) {
+            /* easiest case */
+            repl = trDupNode(node);
+            trAppend(state->header->children[0], repl, NULL);
+            return node;
+        }
+
+
+    }
+
+    return node;
+}
+
+Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
+{
+    TrFind find;
+
+    if (!isprimary) return node;
+
+    /* first make the header node */
+    state->header = newNode(NULL, NODE_FILE, NULL, 2);
+    state->header->children[0] = newNode(state->header, NODE_TRANSLATION_UNIT, NULL, 0);
+    state->header->children[1] = newNode(state->header, NODE_TOK,
+                                         newToken(TOK_TERM, 1, "", ""), 0);
+
+    /* search for @public, @header, @private */
+    memset(&find, 0, sizeof(find));
+    find.matchDecoration[0] = "public";
+    find.matchDecoration[1] = "header";
+    find.matchDecoration[2] = "private";
+    transform(state, node, &find, transformHeaderStageF, NULL);
+
+    return node;
+}
+
 /* @raw stage */
 static Node *transformRawStageF(TransformState *state, Node *node, int *then, void *arg)
 {

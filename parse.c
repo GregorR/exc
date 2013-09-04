@@ -1802,7 +1802,9 @@ CONCAT_LIST(TranslationUnit, NODE_TRANSLATION_UNIT, ExternalDeclaration)
 PARSER(Top)
 {
     Node *ret, *node;
-    if (!(node = parseTranslationUnit(state, parent))) return NULL;
+    if (!(node = parseTranslationUnit(state, parent)))
+        /* allow empty translation units */
+        node = newNode(parent, NODE_TRANSLATION_UNIT, NULL, 0);
     MKRETN(NODE_FILE, 2);
     REQUIRET(1, TOK_TERM);
     return ret;
