@@ -59,7 +59,7 @@ void trReplace(Node *from, Node *to, int preserveWhitespace)
                 if (n->tok) {
                     char *nw;
                     if (n->tok->pre) {
-                        SF(nw, malloc, NULL, (strlen(keepWhitespace) + strlen(n->tok->pre)));
+                        SF(nw, malloc, NULL, (strlen(keepWhitespace) + strlen(n->tok->pre) + 1));
                         sprintf(nw, "%s%s", keepWhitespace, n->tok->pre);
                     } else {
                         SF(nw, strdup, NULL, (keepWhitespace));
