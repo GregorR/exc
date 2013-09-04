@@ -36,16 +36,16 @@ Builtin decorations:
 @public
     declaration decorator or decorator declaration
     Puts a declaration for the associated declaration or definition in the
-    generated .h file. What precisely is added depend on what is declared or
-    defined:
+    generated .h file, and potentially REMOVES the declaration/definition from
+    the .c file. What precisely is added depend on what is declared or defined:
      * decorator declaration:
-        All other decorators are added to the header.
+        All other decorators are moved to the header.
      * function-definition:
-        A prototype for the function.
+        A prototype for the function is added to the header.
      * declaration with init-declarator-list, no "extern" or "typedef":
-        The same, including extern.
+        The declaration is added to the header, prefixed with "extern".
      * other:
-        The entire declaration.
+        The entire declaration is moved to the header.
 
     decorator declaration
     The preceding whitespace/comments are added to the generated .h file.

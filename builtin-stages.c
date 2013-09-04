@@ -105,7 +105,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
     }
 
     /* we always want to remove the node itself */
-    repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 1, node->tok->pre, ""), 0);
+    repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
     trReplace(node, repl, 1);
     freeNode(node);
     node = repl;
@@ -127,9 +127,10 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
         Node *pnode = node->parent->parent;
         if (pnode->type == NODE_DECORATION_DECLARATION) {
             /* easiest case */
-            repl = trDupNode(node);
-            trAppend(state->header->children[0], repl, NULL);
-            return node;
+            repl = newNode(NULL, NODE_NIL, NULL, 0);
+            trReplace(pnode, repl, 0);
+            trAppend(state->header->children[0], pnode, NULL);
+            return repl;
         }
 
         if (pnode->type == NODE_DECORATED_FUNCTION_DEFINITION) {
@@ -181,19 +182,27 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
                 }
             }
 
-            repl = trDupNode(pnode);
-
             /* if we HAVE an init declarator list, but do NOT have extern, need
              * to add extern */
             if (hasInitDeclaratorList && !includesExtern) {
+                repl = trDupNode(pnode);
+
                 trPrepend(repl->children[1]->children[0],
                     newNode(NULL, NODE_STORAGE_CLASS_SPECIFIER, newToken(TOK_extern, 1, " ", "extern"), 0));
+
+                /* and add it to the header */
+                trAppend(state->header->children[0], repl, NULL);
+
+                return node;
+
+            } else {
+                /* otherwise, just move it to the header */
+                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                trReplace(pnode, repl, 0);
+                trAppend(state->header->children[0], pnode, NULL);
+                return repl;
+
             }
-
-            /* and add it to the header */
-            trAppend(state->header->children[0], repl, NULL);
-
-            return node;
         }
 
     }
