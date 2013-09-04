@@ -2,7 +2,9 @@ CC=gcc
 CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic \
  -Wno-unused-function
 
-SRC=builtin-stages.c exec.c main.c node.c parse.c scan.c transform.c unparse.c
+SRC=\
+	builtin-stages.c exec.c main.c node.c parse.c scan.c spec.c \
+	transform.c unparse.c whereami.c
 OBJS=$(SRC:.c=.o)
 
 all: exc

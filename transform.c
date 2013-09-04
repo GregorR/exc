@@ -168,7 +168,7 @@ static int match(TransformState *state, Node *node, TrFind *find)
 }
 
 /* perform the given transformation on matching nodes */
-void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func)
+void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg)
 {
     int then;
     size_t i;
@@ -180,13 +180,14 @@ void transform(TransformState *state, Node *node, TrFind *find, transform_func_t
             Node *snode;
 
             then = THEN_INNER_EXCLUSIVE;
-            snode = func(state, node, &then);
+            snode = func(state, node, &then, arg);
 
             /* and figure out what to do next */
             if (snode) {
                 node = snode;
                 if (then == THEN_INNER_INCLUSIVE) continue;
                 else if (then == THEN_OUTER) goto outer;
+                else if (then == THEN_STOP) break;
             }
         }
 
@@ -226,6 +227,8 @@ TransformState transformFile(char *filename)
     INIT_BUFFER(state.transforms);
     INIT_BUFFER(state.filenames);
     INIT_BUFFER(state.files);
+    state.header = NULL;
+
     WRITE_ONE_BUFFER(state.filenames, filename);
 
     /* first stage just gets all the files input */
@@ -312,4 +315,7 @@ void freeTransformState(TransformState *state)
         if (state->files.buf[i])
             freeNode(state->files.buf[i]);
     FREE_BUFFER(state->files);
+
+    if (state->header)
+        freeNode(state->header);
 }

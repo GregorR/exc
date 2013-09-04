@@ -38,11 +38,11 @@ Builtin decorations:
     Puts a declaration for the associated declaration or definition in the
     generated .h file. What precisely is added depend on what is declared or
     defined:
-     * function:
+     * function-definition:
         A prototype for the function.
-     * variable:
-        An "extern" declaration of the variable.
-     * struct, union, typedef:
+     * declaration with init-declarator-list, no "extern" or "typedef":
+        The same, including extern if not already present.
+     * other:
         The entire declaration.
 
     decorator declaration

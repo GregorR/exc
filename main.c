@@ -5,21 +5,31 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "spec.h"
 #include "transform.h"
 #include "unparse.h"
-#if 0
-#include "parse.h"
-#include "unparse.h"
-#endif
+#include "whereami.h"
 
 int main(int argc, char **argv)
 {
     int i;
     size_t si;
+    char *bindir, *binfil;
+    Spec *spec;
+
+    if (!whereAmI(argv[0], &bindir, &binfil)) {
+        fprintf(stderr, "Failed to find binary location, assuming .!\n");
+        bindir = ".";
+    }
+
+    spec = excLoadSpec(bindir, NULL);
+    (void) spec;
+
     for (i = 1; i < argc; i++) {
         TransformState state;
-        struct Buffer_char unparsed;
+        struct Buffer_char cfname;
         char *file;
+        FILE *f;
 
         /* remove .exc */
         SF(file, strdup, NULL, (argv[i]));
@@ -35,55 +45,28 @@ int main(int argc, char **argv)
 
         /* unparse it */
         if (state.files.buf[0]) {
-            unparsed = cunparse(state.files.buf[0]);
-            printf("%s\n", unparsed.buf);
+            struct Buffer_char unparsed = cunparse(state.files.buf[0]);
+            unparsed.bufused--;
+
+            /* write it out to the C file */
+            INIT_BUFFER(cfname);
+            WRITE_BUFFER(cfname, file, strlen(file));
+            WRITE_BUFFER(cfname, ".c", 3);
+            f = fopen(cfname.buf, "w");
+            if (f == NULL) {
+                perror(cfname.buf);
+                exit(1);
+            }
+            if (fwrite(unparsed.buf, 1, unparsed.bufused, f) != unparsed.bufused) {
+                perror(cfname.buf);
+                exit(1);
+            }
+            fclose(f);
+            FREE_BUFFER(cfname);
             FREE_BUFFER(unparsed);
         }
 
         freeTransformState(&state);
-#if 0
-        ScanState state;
-        Node *node;
-        struct Buffer_char unparsed;
-        char *error;
-
-        FILE *f;
-        f = fopen(argv[i], "r");
-        if (!f) {
-            perror(argv[i]);
-            continue;
-        }
-
-        state = newScanState(i);
-        INIT_BUFFER(state.buf);
-        READ_FILE_BUFFER(state.buf, f);
-        WRITE_ONE_BUFFER(state.buf, '\0');
-
-        error = NULL;
-        node = cparse(&state, &error);
-        FREE_BUFFER(state.buf);
-
-        if (node) {
-            unparsed = cunparse(node);
-            fprintf(stderr, "%s\n", unparsed.buf);
-            FREE_BUFFER(unparsed);
-
-            unparsed = cunparseJSON(node);
-            printf("%s\n", unparsed.buf);
-            FREE_BUFFER(unparsed);
-
-            freeNode(node);
-
-        } else if (error) {
-            fprintf(stderr, "%s\n", error);
-            free(error);
-
-        } else {
-            fprintf(stderr, "%s: Failed to parse.\n", argv[i]);
-
-        }
-#endif
-
     }
 
     return 0;

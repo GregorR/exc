@@ -7,7 +7,7 @@
 #include "unparse.h"
 
 /* @import stage */
-static Node *transformImportStageF(TransformState *state, Node *node, int *then)
+static Node *transformImportStageF(TransformState *state, Node *node, int *then, void *arg)
 {
     struct Buffer_char fname;
     size_t i;
@@ -67,7 +67,7 @@ Node *transformImportStage(TransformState *state, Node *node, int isprimary)
     /* search for @import */
     memset(&find, 0, sizeof(find));
     find.matchDecoration[0] = "import";
-    transform(state, node, &find, transformImportStageF);
+    transform(state, node, &find, transformImportStageF, NULL);
 
     return node;
 }
@@ -79,7 +79,7 @@ Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
 }
 
 /* @raw stage */
-static Node *transformRawStageF(TransformState *state, Node *node, int *then)
+static Node *transformRawStageF(TransformState *state, Node *node, int *then, void *arg)
 {
     Node *nnode;
 
@@ -270,7 +270,7 @@ Node *transformRawStage(TransformState *state, Node *node, int isprimary)
     find.matchDecoration[0] = "rem";
     find.matchDecoration[1] = "raw";
     find.matchDecoration[2] = "include";
-    transform(state, node, &find, transformRawStageF);
+    transform(state, node, &find, transformRawStageF, NULL);
 
     return node;
 }

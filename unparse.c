@@ -54,6 +54,73 @@ struct Buffer_char cunparse(Node *node)
 }
 
 
+struct Buffer_char cunparseStrLiteral(Token *tok)
+{
+    struct Buffer_char buf;
+    size_t i;
+    char xspace[3];
+    char *sl = tok->tok;
+    char delimiter = sl[0];
+    INIT_BUFFER(buf);
+
+    for (i = 1; sl[i]; i++) {
+        char w = sl[i];
+
+        if (sl[i] == delimiter) break;
+
+        if (sl[i] == '\\') {
+            /* an escape sequence */
+            switch (sl[++i]) {
+                case '0':
+                    w = '\0';
+                    break;
+
+                case 'b':
+                    w = '\b';
+                    break;
+
+                case 'f':
+                    w = '\f';
+                    break;
+
+                case 'n':
+                    w = '\n';
+                    break;
+
+                case 'r':
+                    w = '\r';
+                    break;
+
+                case 't':
+                    w = '\t';
+                    break;
+
+                case 'x':
+                    if (sl[++i]) {
+                        xspace[0] = sl[i]; 
+                        if (sl[++i]) {
+                            xspace[1] = sl[i];
+                            xspace[2] = '\0';
+                        } else xspace[1] = '\0';
+                    } else xspace[0] = '\0';
+                    w = (char) strtol(xspace, NULL, 16);
+                    break;
+
+                default:
+                    w = sl[i];
+                    break;
+            }
+        }
+
+        WRITE_ONE_BUFFER(buf, w);
+    }
+
+    WRITE_ONE_BUFFER(buf, '\0');
+
+    return buf;
+}
+
+
 static void unparseJSONStr(struct Buffer_char *buf, const char *str)
 {
     size_t i;

@@ -12,7 +12,7 @@ BUFFER(charp, char *);
 BUFFER(Nodep, Node *);
 
 typedef struct TransformState_ TransformState;
-typedef Node *(*transform_func_t)(TransformState *, Node *, int *then);
+typedef Node *(*transform_func_t)(TransformState *, Node *, int *then, void *arg);
 typedef int (*transform_condition_func_t)(TransformState *, Node *);
 typedef Node *(*transform_stage_func_t)(TransformState *, Node *, int isprimary);
 
@@ -20,7 +20,8 @@ typedef Node *(*transform_stage_func_t)(TransformState *, Node *, int isprimary)
 enum {
     THEN_INNER_INCLUSIVE, /* then check the node and all its children */
     THEN_INNER_EXCLUSIVE, /* then check the node's children (but not the node itself) */
-    THEN_OUTER            /* then check the node's neighbor */
+    THEN_OUTER,           /* then check the node's neighbor */
+    THEN_STOP             /* do not continue transformation */
 };
 
 /* transforms themselves */
@@ -34,6 +35,7 @@ struct TransformState_ {
     struct Buffer_Transform transforms;
     struct Buffer_charp filenames; /* memory owned by the transform state */
     struct Buffer_Nodep files;
+    Node *header;
 };
 
 /* utility functions for transforms */
@@ -63,7 +65,7 @@ typedef struct TrFind_ {
 } TrFind;
 
 /* perform the given transformation on matching nodes */
-void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func);
+void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg);
 
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
