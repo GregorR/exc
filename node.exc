@@ -1,16 +1,27 @@
-#define _XOPEN_SOURCE 700
-#include "stdlib.h"
+@raw(#define _XOPEN_SOURCE 700 /* for strdup */);
 
-#include "stdio.h"
+@include(stdlib.h);
+@include(stdio.h);
+@include(string.h);
 
-#include "string.h"
+@include(helpers.h);
+@include(node.h);
 
-#include "helpers.h"
+@public typedef struct Token_ {
+    int type;
+    size_t idx, f, l, c;
+    char *pre, *tok;
+} Token;
 
-#include "node.h"
+@public typedef struct Node_ {
+    struct Node_ *parent;
+    int type;
+    Token *tok;
+    struct Node_ *children[1];
+} Node;
 
 /* create a node */
- Node *newNode(Node *parent, int type, Token *tok, size_t children)
+@public Node *newNode(Node *parent, int type, Token *tok, size_t children)
 {
     Node *ret;
     SF(ret, calloc, NULL, (sizeof(Node) + children * sizeof(Node *), 1));
@@ -19,8 +30,9 @@
     ret->tok = tok;
     return ret;
 }
+
 /* free a node and all the tokens and nodes under it */
- void freeNode(Node *node)
+@public void freeNode(Node *node)
 {
     size_t i;
     for (i = 0; node->children[i]; i++)
@@ -29,14 +41,16 @@
         freeToken(node->tok);
     free(node);
 }
+
 /* Create a token. All memory becomes owned by the token. */
- Token *newToken(int type, int dup, char *pre, char *tok)
+@public Token *newToken(int type, int dup, char *pre, char *tok)
 {
     Token *ret;
     SF(ret, malloc, NULL, (sizeof(Token)));
     ret->type = type;
     ret->idx = ret->l = ret->c = 0;
     ret->f = -1;
+
     if (pre == NULL) {
         SF(ret->pre, strdup, NULL, (""));
     } else if (dup) {
@@ -44,6 +58,7 @@
     } else {
         ret->pre = pre;
     }
+
     if (tok == NULL) {
         SF(ret->tok, strdup, NULL, (""));
     } else if (dup) {
@@ -51,10 +66,12 @@
     } else {
         ret->tok = tok;
     }
+
     return ret;
 }
+
 /* free a token */
- void freeToken(Token *tok)
+@public void freeToken(Token *tok)
 {
     free(tok->pre);
     free(tok->tok);
