@@ -28,7 +28,7 @@ static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void
         *ret = cmd;
         INIT_BUFFER(cmd->cmd);
         INIT_BUFFER(cmd->repPositions);
-        INIT_BUFFER(cmd->repNames);
+        cmd->i = cmd->o = -1;
 
         /* read it in */
         for (i = 0; node->children[i]; i++) {
@@ -40,13 +40,20 @@ static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void
                         if (node->children[i+1] &&
                             node->children[i+1]->tok &&
                             node->children[i+1]->tok->tok) {
-                            char *rName, *rName2;
+                            char *rName;
                             i++;
-                            SF(rName, strdup, NULL, (node->children[i+1]->tok->tok));
-                            WRITE_ONE_BUFFER(cmd->repPositions, (int) cmd->cmd.bufused);
-                            WRITE_ONE_BUFFER(cmd->repNames, rName);
-                            SF(rName2, strdup, NULL, (rName));
-                            WRITE_ONE_BUFFER(cmd->cmd, rName2);
+
+                            SF(rName, strdup, NULL, (node->children[i]->tok->tok));
+                            WRITE_ONE_BUFFER(cmd->cmd, rName);
+
+                            /* special case for @i and @o */
+                            if (!strcmp(rName, "i")) {
+                                cmd->i = (int) cmd->cmd.bufused;
+                            } else if (!strcmp(rName, "o")) {
+                                cmd->o = (int) cmd->cmd.bufused;
+                            } else {
+                                WRITE_ONE_BUFFER(cmd->repPositions, (int) cmd->cmd.bufused - 1);
+                            }
                         }
                         break;
 
@@ -151,7 +158,10 @@ Spec *excLoadSpec(const char *bindir, const char *file)
 
     /* and read in each line */
     SF(ret, malloc, NULL, (sizeof(Spec)));
-    ret->cpp = readSpecCmd(node, "cpp");
+#define LOAD(x) ret->x = readSpecCmd(node, #x)
+    LOAD(cpp);
+    LOAD(cc);
+#undef LOAD
 
     return ret;
 }
@@ -159,11 +169,67 @@ Spec *excLoadSpec(const char *bindir, const char *file)
 /* run a spec command with the given replacements */
 struct Buffer_char execSpec(
     SpecCmd *cmd,
-    char *const replNames[],
-    char *const replVals[],
+    char *const repNames[],
+    char *const repVals[],
     struct Buffer_char input,
     int *status)
 {
-    /* FIXME: replacements not ACTUALLY implemented yet :) */
-    return execBuffered(cmd->cmd.buf, input, status);
+    size_t i;
+    struct Buffer_char ret;
+    char **repCmd;
+    char fin[] = "/tmp/i.XXXXXX";
+    char fon[] = "/tmp/o.XXXXXX";
+    FILE *fi = NULL, *fo = NULL;
+    int tmpi;
+
+    /* copy the command */
+    SF(repCmd, malloc, NULL, (cmd->cmd.bufused * sizeof(char *)));
+    memcpy(repCmd, cmd->cmd.buf, cmd->cmd.bufused * sizeof(char *));
+
+    /* handle input and output */
+    if (cmd->i >= 0) {
+        SF(tmpi, mkstemp, -1, (fin));
+        SF(fi, fdopen, NULL, (tmpi, "w"));
+        if (fwrite(input.buf, 1, input.bufused, fi) < input.bufused) {
+            fprintf(stderr, "Error writing to temporary file %s!\n", fin);
+            exit(1);
+        }
+        repCmd[cmd->i] = fin;
+    }
+    if (cmd->o >= 0) {
+        SF(tmpi, mkstemp, -1, (fon));
+        SF(fo, fdopen, NULL, (tmpi, "r"));
+        repCmd[cmd->o] = fon;
+    }
+
+    /* perform replacements */
+    if (repNames && repVals) {
+        for (i = 0; repNames[i]; i++) {
+            size_t w;
+            for (w = 0; w < cmd->repPositions.bufused; w++) {
+                if (!strcmp(repNames[i],
+                            cmd->cmd.buf[cmd->repPositions.buf[w]])) {
+                    repCmd[cmd->repPositions.buf[w]] = repVals[i];
+                    break;
+                }
+            }
+        }
+    }
+
+    /* execute it */
+    ret = execBuffered(repCmd, input, status);
+
+    /* get out output */
+    if (cmd->o >= 0) {
+        ret.bufused = 0;
+        READ_FILE_BUFFER(ret, fo);
+    }
+
+    /* get rid of our temp files */
+    if (fi) fclose(fi);
+    if (fo) fclose(fo);
+    free(repCmd);
+
+    /* and return the output */
+    return ret;
 }

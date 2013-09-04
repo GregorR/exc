@@ -12,7 +12,7 @@
 
 int main(int argc, char **argv)
 {
-    int i;
+    int i, tmpi;
     size_t si;
     char *bindir, *binfil;
     Spec *spec;
@@ -27,9 +27,8 @@ int main(int argc, char **argv)
 
     for (i = 1; i < argc; i++) {
         TransformState state;
-        struct Buffer_char cfname;
+        struct Buffer_char ofname;
         char *file;
-        FILE *f;
 
         /* remove .exc */
         SF(file, strdup, NULL, (argv[i]));
@@ -41,29 +40,33 @@ int main(int argc, char **argv)
         }
 
         /* handle the file */
-        state = transformFile(file);
+        state = transformFile(spec, file);
 
         /* unparse it */
         if (state.files.buf[0]) {
+            char *repNames[] = {"of", NULL};
+            char *repVals[] = {NULL, NULL};
+            struct Buffer_char tmpb;
             struct Buffer_char unparsed = cunparse(state.files.buf[0]);
             unparsed.bufused--;
 
-            /* write it out to the C file */
-            INIT_BUFFER(cfname);
-            WRITE_BUFFER(cfname, file, strlen(file));
-            WRITE_BUFFER(cfname, ".c", 3);
-            f = fopen(cfname.buf, "w");
-            if (f == NULL) {
-                perror(cfname.buf);
-                exit(1);
-            }
-            if (fwrite(unparsed.buf, 1, unparsed.bufused, f) != unparsed.bufused) {
-                perror(cfname.buf);
-                exit(1);
-            }
-            fclose(f);
-            FREE_BUFFER(cfname);
+            /* get the .o file name */
+            INIT_BUFFER(ofname);
+            WRITE_BUFFER(ofname, file, strlen(file));
+            WRITE_BUFFER(ofname, ".o", 3);
+
+            /* compile */
+            repVals[0] = ofname.buf;
+            tmpb = execSpec(spec->cc, repNames, repVals,
+                            unparsed, &tmpi);
+            FREE_BUFFER(tmpb);
+            FREE_BUFFER(ofname);
             FREE_BUFFER(unparsed);
+
+            if (tmpi != 0) {
+                fprintf(stderr, "Failed to compile %s\n", file);
+                exit(1);
+            }
         }
 
         freeTransformState(&state);

@@ -217,7 +217,7 @@ outer:
 
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
-TransformState transformFile(char *filename)
+TransformState transformFile(Spec *spec, char *filename)
 {
     TransformState state;
     size_t i;
@@ -239,7 +239,6 @@ TransformState transformFile(char *filename)
         if (state.files.bufused <= i) {
             /* we need to read in the file first! */
             struct Buffer_char loader, source;
-            struct Buffer_charp command;
             ScanState scanState;
             char *error;
 
@@ -248,19 +247,10 @@ TransformState transformFile(char *filename)
             WRITE_BUFFER(loader, filename, strlen(filename));
             WRITE_BUFFER(loader, ".exc\"\n", 6);
 
-            INIT_BUFFER(command);
-            WRITE_ONE_BUFFER(command, "gcc");
-            WRITE_ONE_BUFFER(command, "-E");
-            WRITE_ONE_BUFFER(command, "-undef");
-            WRITE_ONE_BUFFER(command, "-ffreestanding");
-            WRITE_ONE_BUFFER(command, "-x");
-            WRITE_ONE_BUFFER(command, "c");
-            WRITE_ONE_BUFFER(command, "-");
-            WRITE_ONE_BUFFER(command, NULL);
 
-            source = execBuffered(command.buf, loader, &tmpi);
+            source = execSpec(spec->cpp, NULL, NULL, loader, &tmpi);
+
             FREE_BUFFER(loader);
-            FREE_BUFFER(command);
             WRITE_ONE_BUFFER(source, '\0');
 
             if (tmpi != 0) {
