@@ -135,6 +135,27 @@ Node *trAppend(Node *parent, ...)
     return parent;
 }
 
+/* prepend a single node to an existing node, and perhaps give it the
+ * successor's whitespace */
+Node *trPrepend(Node *parent, Node *child)
+{
+    size_t i, ni;
+
+    /* resize the parent node */
+    for (i = 0; parent->children[i]; i++);
+    parent = trResize(parent, i + 1);
+
+    /* move the children */
+    for (ni = i; ni >= 1; ni--)
+        parent->children[ni] = parent->children[ni-1];
+
+    /* and add the new node */
+    parent->children[0] = child;
+    child->parent = parent;
+
+    return parent;
+}
+
 /* duplicate a tree of nodes */
 Node *trDupNode(Node *node)
 {

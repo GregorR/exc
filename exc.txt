@@ -43,7 +43,7 @@ Builtin decorations:
      * function-definition:
         A prototype for the function.
      * declaration with init-declarator-list, no "extern" or "typedef":
-        The same, including extern if not already present.
+        The same, including extern.
      * other:
         The entire declaration.
 

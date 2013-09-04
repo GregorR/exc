@@ -52,6 +52,9 @@ Node *trResize(Node *node, size_t to);
 /* append nodes as children of an existing node, which can replace the node */
 Node *trAppend(Node *parent, ...);
 
+/* prepend a single node to an existing node */
+Node *trPrepend(Node *parent, Node *child);
+
 /* duplicate a tree of nodes */
 Node *trDupNode(Node *node);
 

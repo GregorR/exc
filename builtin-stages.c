@@ -105,7 +105,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
     }
 
     /* we always want to remove the node itself */
-    repl = newNode(NULL, NODE_NIL, NULL, 0);
+    repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 1, node->tok->pre, ""), 0);
     trReplace(node, repl, 1);
     freeNode(node);
     node = repl;
@@ -157,6 +157,45 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
             return node;
         }
 
+        if (pnode->type != NODE_DECORATED_DECLARATION) return node;
+
+        /* now we need to check if the specifiers include 'extern' or 'typedef'
+         * and have an init-declarator-list */
+        {
+            int hasInitDeclaratorList = 0;
+            int includesExtern = 0;
+            size_t i;
+            Node *declSpec;
+
+            if (pnode->children[1]->children[1]->type == NODE_INIT_DECLARATOR_LIST) hasInitDeclaratorList = 1;
+
+            /* go over the declaration specifiers */
+            declSpec = pnode->children[1]->children[0];
+            for (i = 0; declSpec->children[i]; i++) {
+                Node *d = declSpec->children[i];
+                if (d->type == NODE_STORAGE_CLASS_SPECIFIER) {
+                    if (d->tok->type == TOK_extern || d->tok->type == TOK_typedef) {
+                        includesExtern = 1;
+                        break;
+                    }
+                }
+            }
+
+            repl = trDupNode(pnode);
+
+            /* if we HAVE an init declarator list, but do NOT have extern, need
+             * to add extern */
+            if (hasInitDeclaratorList && !includesExtern) {
+                trPrepend(repl->children[1]->children[0],
+                    newNode(NULL, NODE_STORAGE_CLASS_SPECIFIER, newToken(TOK_extern, 1, " ", "extern"), 0));
+            }
+
+            /* and add it to the header */
+            trAppend(state->header->children[0], repl, NULL);
+
+            return node;
+        }
+
     }
 
     return node;
@@ -172,7 +211,7 @@ Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
     state->header = newNode(NULL, NODE_FILE, NULL, 2);
     state->header->children[0] = newNode(state->header, NODE_TRANSLATION_UNIT, NULL, 0);
     state->header->children[1] = newNode(state->header, NODE_TOK,
-                                         newToken(TOK_TERM, 1, "", ""), 0);
+                                         newToken(TOK_TERM, 1, "\n", ""), 0);
 
     /* search for @public, @header, @private */
     memset(&find, 0, sizeof(find));
