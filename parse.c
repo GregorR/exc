@@ -1,11 +1,11 @@
-#include <string.h>
+
+#include "string.h"
 
 #include "parse.h"
 
 #include "unparse.h"
 
 BUFFER(Nodep, Node *);
-
 /* scan for a token, with pushback support */
 static Token *scan(ParseState *state)
 {
@@ -13,16 +13,13 @@ static Token *scan(ParseState *state)
         state->buf.bufused--;
         return state->buf.buf[state->buf.bufused];
     }
-
     return cscan(state->scanState);
 }
-
 /* push a token back */
 static void pushToken(ParseState *state, Token *tok)
 {
     WRITE_ONE_BUFFER(state->buf, tok);
 }
-
 /* push a whole node worth of tokens back */
 static void pushNode(ParseState *state, Node *node)
 {
@@ -35,14 +32,11 @@ static void pushNode(ParseState *state, Node *node)
         node->tok = NULL;
     }
 }
-
 /* expect a given token (return the token or push back and return NULL) */
 static Token *expect(ParseState *state, int type)
 {
     Token *ret = scan(state);
-
     if (ret->type == type) return ret;
-
     /* add it to the error state */
     if (ret->idx > state->eidx) {
         state->eidx = ret->idx;
@@ -51,20 +45,16 @@ static Token *expect(ParseState *state, int type)
         state->eexpected.bufused = 0;
         state->efound = ret->type;
     }
-
     if (ret->idx == state->eidx) {
         WRITE_ONE_BUFFER(state->eexpected, type);
     }
-
     pushToken(state, ret);
     return NULL;
 }
-
 /* expect a given token, as a node */
 static Node *expectN(ParseState *state, Node *parent, int type)
 {
     Token *tok;
-
     if ((tok = expect(state, type))) {
         Node *ret = newNode(parent, NODE_TOK, tok, 0);
         if (!ret) {
@@ -74,123 +64,31 @@ static Node *expectN(ParseState *state, Node *parent, int type)
         ret->tok = tok;
         return ret;
     }
-
     return NULL;
 }
-
 /* prepare ret with a single node `node` */
-#define MKRETN(nodeType, chn) do { \
-    ret = newNode(parent, nodeType, NULL, chn); \
-    if (!ret) { \
-        pushNode(state, node); \
-        freeNode(node); \
-        return NULL; \
-    } \
-    ret->children[0] = node; \
-    node->parent = ret; \
-} while (0)
-
 /* prepare ret with nodes `node` and `node2` */
-#define MKRETN2(nodeType, chn) do { \
-    ret = newNode(parent, nodeType, NULL, chn); \
-    if (!ret) { \
-        pushNode(state, node); \
-        pushNode(state, node2); \
-        freeNode(node); \
-        freeNode(node2); \
-        return NULL; \
-    } \
-    ret->children[0] = node; \
-    ret->children[1] = node2; \
-    node->parent = ret; \
-    node2->parent = ret; \
-} while (0)
-
 /* prepare ret with token `tok` */
-#define MKRETT(nodeType, chn) do { \
-    ret = newNode(parent, nodeType, tok, chn); \
-    if (!ret) { \
-        pushToken(state, tok); \
-        return NULL; \
-    } \
-} while (0)
-
 /* shift the first child off of `ret` (usually to restore it before
  * pushNode(ret)) */
-#define SHIFTRET() do { \
-    size_t sri_; \
-    for (sri_ = 0; ret->children[sri_]; sri_++) \
-        ret->children[sri_] = ret->children[sri_+1]; \
-} while (0)
-
 /* restore `node` from ret->children[0] and push/delete node */
-#define RESTOREN() do { \
-    node = ret->children[0]; \
-    node->parent = parent; \
-    SHIFTRET(); \
-    pushNode(state, ret); \
-    freeNode(ret); \
-} while (0)
-
 /* require a parser succeed, else iffail 
  * This is INTENTIONALLY not a do{}while, to allow for breaks */
-#define REQUIREPO(chn, parser, iffail) { \
-if (!(ret->children[chn] = parse ## parser(state, ret))) { \
-    iffail \
-} \
-}
-
 /* require a parser succeed else return NULL */
-#define REQUIREP(chn, parser) REQUIREPO(chn, parser, { \
-    pushNode(state, ret); \
-    freeNode(ret); \
-    return NULL; \
-})
-
 /* require a parser succeed else RESTORE */
-#define REQUIREPR(chn, parser) REQUIREPO(chn, parser, RESTORE)
-
 /* require a token be found else iffail */
-#define REQUIRETO(chn, toktype, iffail) { \
-if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
-    iffail \
-} \
-}
-
 /* require a token be found else return NULL */
-#define REQUIRET(chn, toktype) REQUIRETO(chn, toktype, { \
-    pushNode(state, ret); \
-    freeNode(ret); \
-    return NULL; \
-})
-
 /* require a token be found else RESTORE */
-#define REQUIRETR(chn, toktype) REQUIRETO(chn, toktype, RESTORE)
-
 /* type for a parser */
-#define PARSER(name) static Node *parse ## name(ParseState *state, Node *parent)
-
 /* make an optional parser based on a parser `name` */
-#define OPT(name) \
-PARSER(name ## Opt) \
-{ \
-    Node *ret; \
-    if ((ret = parse ## name(state, parent))) return ret; \
-    return newNode(parent, NODE_NIL, NULL, 0); \
-}
-
 /* temporary */
-#define FAKEPARSER(name) \
-static Node *parse ## name(ParseState *state, Node *parent) { return NULL; }
-
 /***************************************************************
  * IDENTIFIERS/CONSTANTS                                       *
  ***************************************************************/
-PARSER(DecorationName)
+static Node *parseDecorationName(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     tok = scan(state);
     switch (tok->type) {
         case TOK_LPAREN:
@@ -206,397 +104,229 @@ PARSER(DecorationName)
             /* these tokens are NOT acceptable as decoration names */
             pushToken(state, tok);
             break;
-
         default:
-            MKRETT(NODE_DECORATION_NAME, 0);
+            do { ret = newNode(parent, NODE_DECORATION_NAME, tok, 0); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
             return ret;
     }
-
     return NULL;
 }
-
-PARSER(Identifier)
+static Node *parseIdentifier(ParseState *state, Node *parent)
 {
     Node *ret = expectN(state, parent, TOK_ID);
     if (!ret) return NULL;
     ret->type = NODE_ID;
     return ret;
 }
-OPT(Identifier)
-
-PARSER(Constant)
+static Node *parseIdentifierOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseIdentifier(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseConstant(ParseState *state, Node *parent)
 {
     Node *ret;
-
     if ((ret = expectN(state, parent, TOK_INT_LITERAL))) {
         ret->type = NODE_INT_LITERAL;
         return ret;
     }
-
     if ((ret = expectN(state, parent, TOK_FLOAT_LITERAL))) {
         ret->type = NODE_FLOAT_LITERAL;
         return ret;
     }
-
     if ((ret = expectN(state, parent, TOK_CHAR_LITERAL))) {
         ret->type = NODE_CHAR_LITERAL;
         return ret;
     }
-
     if ((ret = expectN(state, parent, TOK_STR_LITERAL))) {
         ret->type = NODE_STR_LITERAL;
         return ret;
     }
-
     return NULL;
 }
-
-#define PARSER_LIST(parserName) \
-PARSER(parserName) { return parse ## parserName ## L(state, parent, 1); } \
-PARSER(parserName ## Opt) { return parse ## parserName ## L(state, parent, 0); }
-
-#define COMMA_LIST(parserName, genNode, nextParser) \
-static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
-{ \
-    Node *ret, *node; \
-    struct Buffer_Nodep buf; \
-    size_t i; \
-    \
-    INIT_BUFFER(buf); \
-    \
-    if ((node = parse ## nextParser(state, parent))) { \
-        WRITE_ONE_BUFFER(buf, node); \
-        \
-        while ((node = expectN(state, parent, TOK_COMMA))) { \
-            WRITE_ONE_BUFFER(buf, node); \
-            \
-            if (!(node = parse ## nextParser(state, parent))) { \
-                node = buf.buf[buf.bufused-1]; \
-                buf.bufused--; \
-                pushNode(state, node); \
-                freeNode(node); \
-                break; \
-            } \
-            \
-            WRITE_ONE_BUFFER(buf, node); \
-        } \
-    } \
-    \
-    if (need1 && buf.bufused == 0) { \
-        FREE_BUFFER(buf); \
-        return NULL; \
-    } \
-    \
-    /* OK, got the whole list */ \
-    ret = newNode(parent, genNode, NULL, buf.bufused); \
-    for (i = 0; i < buf.bufused; i++) { \
-        ret->children[i] = buf.buf[i]; \
-        ret->children[i]->parent = ret; \
-    } \
-    \
-    FREE_BUFFER(buf); \
-    \
-    return ret; \
-} \
-PARSER_LIST(parserName)
-
-#define CONCAT_LIST(parserName, genNode, nextParser) \
-static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
-{ \
-    Node *ret, *node; \
-    struct Buffer_Nodep buf; \
-    size_t i; \
-    \
-    INIT_BUFFER(buf); \
-    \
-    while ((node = parse ## nextParser(state, parent))) { \
-        WRITE_ONE_BUFFER(buf, node); \
-    } \
-    \
-    if (need1 && buf.bufused == 0) { \
-        FREE_BUFFER(buf); \
-        return NULL; \
-    } \
-    \
-    ret = newNode(parent, genNode, NULL, buf.bufused); \
-    for (i = 0; i < buf.bufused; i++) { \
-        ret->children[i] = buf.buf[i]; \
-        buf.buf[i]->parent = ret; \
-    } \
-    \
-    FREE_BUFFER(buf); \
-    \
-    return ret; \
-} \
-PARSER_LIST(parserName)
-
-
 /***************************************************************
  * EXPRESSIONS                                                 *
  ***************************************************************/
-PARSER(PrimaryExpression);
-PARSER(CastExpression);
-PARSER(AssignmentExpression);
-PARSER(Expression);
-PARSER(TypeName);
-PARSER(InitializerList);
-PARSER(DecorationOpExpression);
-PARSER(ExpressionDecorator);
-
-COMMA_LIST(ArgumentExpressionList, NODE_ARGUMENT_EXPRESSION_LIST, AssignmentExpression)
-
-PARSER(PostfixExpression)
+static Node *parsePrimaryExpression(ParseState *state, Node *parent);
+static Node *parseCastExpression(ParseState *state, Node *parent);
+static Node *parseAssignmentExpression(ParseState *state, Node *parent);
+static Node *parseExpression(ParseState *state, Node *parent);
+static Node *parseTypeName(ParseState *state, Node *parent);
+static Node *parseInitializerList(ParseState *state, Node *parent);
+static Node *parseDecorationOpExpression(ParseState *state, Node *parent);
+static Node *parseExpressionDecorator(ParseState *state, Node *parent);
+static Node *parseArgumentExpressionListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseAssignmentExpression(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseAssignmentExpression(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_ARGUMENT_EXPRESSION_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseArgumentExpressionList(ParseState *state, Node *parent) { return parseArgumentExpressionListL(state, parent, 1); } static Node *parseArgumentExpressionListOpt(ParseState *state, Node *parent) { return parseArgumentExpressionListL(state, parent, 0); }
+static Node *parsePostfixExpression(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
     Token *tok;
-
     node = NULL;
     if ((tok = expect(state, TOK_LPAREN))) {
         /* a compound literal */
-        MKRETT(NODE_COMPOUND_LITERAL, 6);
-#define RESTORE { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; }
-        REQUIREPR(0, TypeName);
-        REQUIRETR(1, TOK_RPAREN);
-        REQUIRETR(2, TOK_LBRACE);
-        REQUIREPR(3, InitializerList);
+        do { ret = newNode(parent, NODE_COMPOUND_LITERAL, tok, 6); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseTypeName(state, ret))) { { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_LBRACE))) { { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; } } };
+        { if (!(ret->children[3] = parseInitializerList(state, ret))) { { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; } } };
         if ((ret->children[4] = expectN(state, ret, TOK_COMMA))) {
-            REQUIRETR(5, TOK_RBRACE);
+            { if (!(ret->children[5] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; } } };
         } else {
-            REQUIRETR(4, TOK_RBRACE);
+            { if (!(ret->children[4] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); node = NULL; goto notcompound; } } };
         }
-#undef RESTORE
         node = ret;
-
         notcompound: (void) 0;
-
     }
-
     if (!node && !(node = parsePrimaryExpression(state, parent))) {
         return NULL;
-
     }
-
     while (1) {
-#define RESTORE { RESTOREN(); break; }
         if ((node2 = expectN(state, parent, TOK_LBRACKET))) {
-            MKRETN2(NODE_INDEX, 4);
-            REQUIREPR(2, Expression);
-            REQUIRETR(3, TOK_RBRACKET);
+            do { ret = newNode(parent, NODE_INDEX, NULL, 4); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+            { if (!(ret->children[2] = parseExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } };
+            { if (!(ret->children[3] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } };
             node = ret;
             continue;
         }
-
         if ((node2 = expectN(state, parent, TOK_LPAREN))) {
-            MKRETN2(NODE_CALL, 4);
-            REQUIREPR(2, ArgumentExpressionListOpt);
-            REQUIRETR(3, TOK_RPAREN);
+            do { ret = newNode(parent, NODE_CALL, NULL, 4); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+            { if (!(ret->children[2] = parseArgumentExpressionListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } };
+            { if (!(ret->children[3] = expectN(state, ret, TOK_RPAREN))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } };
             node = ret;
             continue;
         }
-
         if ((node2 = expectN(state, parent, TOK_DOT))) {
-            MKRETN2(NODE_MEMBER_DOT, 3);
-            REQUIRETR(2, TOK_ID);
+            do { ret = newNode(parent, NODE_MEMBER_DOT, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+            { if (!(ret->children[2] = expectN(state, ret, TOK_ID))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } };
             node = ret;
             continue;
         }
-
         if ((node2 = expectN(state, parent, TOK_ARROW))) {
-            MKRETN2(NODE_MEMBER_ARROW, 3);
-            REQUIRETR(2, TOK_ID);
+            do { ret = newNode(parent, NODE_MEMBER_ARROW, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+            { if (!(ret->children[2] = expectN(state, ret, TOK_ID))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } };
             node = ret;
             continue;
         }
-
         if ((node2 = expectN(state, parent, TOK_PLUSPLUS))) {
-            MKRETN2(NODE_POSTINC, 2);
+            do { ret = newNode(parent, NODE_POSTINC, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
             node = ret;
             continue;
         }
-
         if ((node2 = expectN(state, parent, TOK_MINUSMINUS))) {
-            MKRETN2(NODE_POSTDEC, 2);
+            do { ret = newNode(parent, NODE_POSTDEC, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
             node = ret;
             continue;
         }
-#undef RESTORE
-
         break;
     }
-
     return node;
 }
-
-PARSER(UnaryTypeExpression)
+static Node *parseUnaryTypeExpression(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_sizeof))) {
-        MKRETT(NODE_SIZEOF_TYPE, 3);
-        REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, TypeName);
-        REQUIRET(2, TOK_RPAREN);
+        do { ret = newNode(parent, NODE_SIZEOF_TYPE, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseTypeName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK__Alignof))) {
-        MKRETT(NODE_ALIGNOF, 3);
-        REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, TypeName);
-        REQUIRET(2, TOK_RPAREN);
+        do { ret = newNode(parent, NODE_ALIGNOF, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseTypeName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(UnaryExpression)
+static Node *parseUnaryExpression(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((ret = parsePostfixExpression(state, parent))) return ret;
-
-#define UNARY_OP(reqTok, genNode) do { \
-    if ((tok = expect(state, reqTok))) { \
-        MKRETT(genNode, 1); \
-        REQUIREPO(0, UnaryExpression, { pushNode(state, ret); freeNode(ret); break; }); \
-        return ret; \
-    } \
-} while (0);
-    UNARY_OP(TOK_PLUSPLUS, NODE_PREINC);
-    UNARY_OP(TOK_MINUSMINUS, NODE_PREDEC);
-    UNARY_OP(TOK_AND, NODE_ADDROF);
-    UNARY_OP(TOK_STAR, NODE_DEREF);
-    UNARY_OP(TOK_PLUS, NODE_POSITIVE);
-    UNARY_OP(TOK_MINUS, NODE_NEGATIVE);
-    UNARY_OP(TOK_BNOT, NODE_BNOT);
-    UNARY_OP(TOK_NOT, NODE_NOT);
-
+    do { if ((tok = expect(state, TOK_PLUSPLUS))) { do { ret = newNode(parent, NODE_PREINC, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
+    do { if ((tok = expect(state, TOK_MINUSMINUS))) { do { ret = newNode(parent, NODE_PREDEC, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
+    do { if ((tok = expect(state, TOK_AND))) { do { ret = newNode(parent, NODE_ADDROF, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
+    do { if ((tok = expect(state, TOK_STAR))) { do { ret = newNode(parent, NODE_DEREF, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
+    do { if ((tok = expect(state, TOK_PLUS))) { do { ret = newNode(parent, NODE_POSITIVE, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
+    do { if ((tok = expect(state, TOK_MINUS))) { do { ret = newNode(parent, NODE_NEGATIVE, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
+    do { if ((tok = expect(state, TOK_BNOT))) { do { ret = newNode(parent, NODE_BNOT, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
+    do { if ((tok = expect(state, TOK_NOT))) { do { ret = newNode(parent, NODE_NOT, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
     if ((ret = parseUnaryTypeExpression(state, parent))) return ret;
-
-    UNARY_OP(TOK_sizeof, NODE_SIZEOF_EXP);
-#undef UNARY_OP
-
+    do { if ((tok = expect(state, TOK_sizeof))) { do { ret = newNode(parent, NODE_SIZEOF_EXP, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
     return NULL;
 }
-
-PARSER(CastTypeExpression)
+static Node *parseCastTypeExpression(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_LPAREN))) {
-        MKRETT(NODE_CAST, 3);
-        REQUIREP(0, TypeName);
-        REQUIRET(1, TOK_RPAREN);
-        REQUIREP(2, CastExpression);
+        do { ret = newNode(parent, NODE_CAST, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseTypeName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseCastExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(CastExpression)
+static Node *parseCastExpression(ParseState *state, Node *parent)
 {
     Node *ret;
     if ((ret = parseCastTypeExpression(state, parent))) return ret;
     if ((ret = parseUnaryExpression(state, parent))) return ret;
     return NULL;
 }
-
-#define BINARY_OP_START(name, nextNode) \
-    PARSER(name) \
-    { \
-        Node *ret, *node, *node2; \
-        if (!(node = parse ## nextNode(state, parent))) return NULL; \
-        while (1) {
-#define BINARY_OP(reqTok, genNode, nextNode) \
-            if ((node2 = expectN(state, parent, reqTok))) { \
-                MKRETN2(genNode, 3); \
-                REQUIREPO(2, nextNode, { RESTOREN(); break; }); \
-                node = ret; \
-                continue; \
-            } 
-#define BINARY_OP_END() \
-            break; \
-        } \
-        return node; \
-    }
-
-BINARY_OP_START(MultiplicativeExpression, DecorationOpExpression)
-    BINARY_OP(TOK_STAR, NODE_MUL, DecorationOpExpression)
-    BINARY_OP(TOK_DIV, NODE_DIV, DecorationOpExpression)
-    BINARY_OP(TOK_MOD, NODE_MOD, DecorationOpExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(AdditiveExpression, MultiplicativeExpression)
-    BINARY_OP(TOK_PLUS, NODE_ADD, MultiplicativeExpression)
-    BINARY_OP(TOK_MINUS, NODE_SUB, MultiplicativeExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(ShiftExpression, AdditiveExpression)
-    BINARY_OP(TOK_SHL, NODE_SHL, AdditiveExpression)
-    BINARY_OP(TOK_SHR, NODE_SHR, AdditiveExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(RelationalExpression, ShiftExpression)
-    BINARY_OP(TOK_LT, NODE_LT, ShiftExpression)
-    BINARY_OP(TOK_GT, NODE_GT, ShiftExpression)
-    BINARY_OP(TOK_LTE, NODE_LTE, ShiftExpression)
-    BINARY_OP(TOK_GTE, NODE_GTE, ShiftExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(EqualityExpression, RelationalExpression)
-    BINARY_OP(TOK_EQ, NODE_EQ, RelationalExpression)
-    BINARY_OP(TOK_NEQ, NODE_NEQ, RelationalExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(BAndExpression, EqualityExpression)
-    BINARY_OP(TOK_AND, NODE_BAND, EqualityExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(BXorExpression, BAndExpression)
-    BINARY_OP(TOK_BXOR, NODE_BXOR, BAndExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(BOrExpression, BXorExpression)
-    BINARY_OP(TOK_BOR, NODE_BOR, BXorExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(AndExpression, BOrExpression)
-    BINARY_OP(TOK_ANDAND, NODE_AND, BOrExpression)
-BINARY_OP_END()
-
-BINARY_OP_START(OrExpression, AndExpression)
-    BINARY_OP(TOK_OROR, NODE_OR, AndExpression)
-BINARY_OP_END()
-
-PARSER(ConditionalExpression)
+static Node *parseMultiplicativeExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseDecorationOpExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_STAR))) { do { ret = newNode(parent, NODE_MUL, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseDecorationOpExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_DIV))) { do { ret = newNode(parent, NODE_DIV, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseDecorationOpExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_MOD))) { do { ret = newNode(parent, NODE_MOD, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseDecorationOpExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseAdditiveExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseMultiplicativeExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_PLUS))) { do { ret = newNode(parent, NODE_ADD, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseMultiplicativeExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_MINUS))) { do { ret = newNode(parent, NODE_SUB, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseMultiplicativeExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseShiftExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseAdditiveExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_SHL))) { do { ret = newNode(parent, NODE_SHL, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseAdditiveExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_SHR))) { do { ret = newNode(parent, NODE_SHR, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseAdditiveExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseRelationalExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseShiftExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_LT))) { do { ret = newNode(parent, NODE_LT, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseShiftExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_GT))) { do { ret = newNode(parent, NODE_GT, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseShiftExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_LTE))) { do { ret = newNode(parent, NODE_LTE, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseShiftExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_GTE))) { do { ret = newNode(parent, NODE_GTE, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseShiftExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseEqualityExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseRelationalExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_EQ))) { do { ret = newNode(parent, NODE_EQ, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseRelationalExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+    if ((node2 = expectN(state, parent, TOK_NEQ))) { do { ret = newNode(parent, NODE_NEQ, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseRelationalExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseBAndExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseEqualityExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_AND))) { do { ret = newNode(parent, NODE_BAND, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseEqualityExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseBXorExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseBAndExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_BXOR))) { do { ret = newNode(parent, NODE_BXOR, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseBAndExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseBOrExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseBXorExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_BOR))) { do { ret = newNode(parent, NODE_BOR, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseBXorExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseAndExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseBOrExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_ANDAND))) { do { ret = newNode(parent, NODE_AND, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseBOrExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseOrExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseAndExpression(state, parent))) return NULL; while (1) {
+    if ((node2 = expectN(state, parent, TOK_OROR))) { do { ret = newNode(parent, NODE_OR, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseAndExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
+break; } return node; }
+static Node *parseConditionalExpression(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if (!(node = parseOrExpression(state, parent))) return NULL;
-
     if ((node2 = expectN(state, parent, TOK_HOOK))) {
-        MKRETN2(NODE_CONDITIONAL, 5);
-#define RESTORE { RESTOREN(); return node; }
-        REQUIREPR(2, Expression);
-        REQUIRETR(3, TOK_COLON);
-        REQUIREPR(4, ConditionalExpression);
-#undef RESTORE
+        do { ret = newNode(parent, NODE_CONDITIONAL, NULL, 5); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+        { if (!(ret->children[2] = parseExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
+        { if (!(ret->children[3] = expectN(state, ret, TOK_COLON))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
+        { if (!(ret->children[4] = parseConditionalExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
         return ret;
     }
-
     return node;
 }
-
-PARSER(AssignmentExpression)
+static Node *parseAssignmentExpression(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     Token *tok;
-
     if ((node = parseUnaryExpression(state, parent))) {
         tok = scan(state);
         if (tok->type <= TOK_ASG_START || tok->type >= TOK_ASG_END) {
@@ -606,321 +336,255 @@ PARSER(AssignmentExpression)
             freeNode(node);
             return parseConditionalExpression(state, parent);
         }
-
         /* an assignment */
-        MKRETN(NODE_ASG, 3);
+        do { ret = newNode(parent, NODE_ASG, NULL, 3); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
         node = newNode(ret, NODE_TOK, tok, 0);
         ret->children[1] = node;
         if (tok->type > TOK_ASG)
             ret->type = NODE_RASG;
-        REQUIREPO(2, AssignmentExpression, { RESTOREN(); return node; });
+        { if (!(ret->children[2] = parseAssignmentExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
         return ret;
     }
-
     return parseConditionalExpression(state, parent);
 }
-OPT(AssignmentExpression)
-
-BINARY_OP_START(Expression, AssignmentExpression);
-    BINARY_OP(TOK_COMMA, NODE_COMMA, AssignmentExpression);
-BINARY_OP_END()
-OPT(Expression)
-
-PARSER(GenericAssociation)
+static Node *parseAssignmentExpressionOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseAssignmentExpression(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseAssignmentExpression(state, parent))) return NULL; while (1) {;
+    if ((node2 = expectN(state, parent, TOK_COMMA))) { do { ret = newNode(parent, NODE_COMMA, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseAssignmentExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; };
+break; } return node; }
+static Node *parseExpressionOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseExpression(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseGenericAssociation(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     Token *tok;
-
     if ((node = parseTypeName(state, parent))) {
-        MKRETN(NODE_GENERIC_ASSOCIATION, 3);
-        REQUIRET(1, TOK_COLON);
-        REQUIREP(2, AssignmentExpression);
+        do { ret = newNode(parent, NODE_GENERIC_ASSOCIATION, NULL, 3); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+        { if (!(ret->children[1] = expectN(state, ret, TOK_COLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseAssignmentExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_default))) {
-        MKRETT(NODE_GENERIC_ASSOCIATION_DEFAULT, 2);
-        REQUIRET(0, TOK_COLON);
-        REQUIREP(1, AssignmentExpression);
+        do { ret = newNode(parent, NODE_GENERIC_ASSOCIATION_DEFAULT, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_COLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseAssignmentExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-COMMA_LIST(GenericAssocList, NODE_GENERIC_ASSOC_LIST, GenericAssociation)
-
-PARSER(GenericSelection)
+static Node *parseGenericAssocListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseGenericAssociation(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseGenericAssociation(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_GENERIC_ASSOC_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseGenericAssocList(ParseState *state, Node *parent) { return parseGenericAssocListL(state, parent, 1); } static Node *parseGenericAssocListOpt(ParseState *state, Node *parent) { return parseGenericAssocListL(state, parent, 0); }
+static Node *parseGenericSelection(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK__Generic))) {
-        MKRETT(NODE_GENERIC_SELECTION, 5);
-        REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, AssignmentExpression);
-        REQUIRET(2, TOK_COMMA);
-        REQUIREP(3, GenericAssocList);
-        REQUIRET(4, TOK_RPAREN);
+        do { ret = newNode(parent, NODE_GENERIC_SELECTION, tok, 5); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseAssignmentExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_COMMA))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = parseGenericAssocList(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[4] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(PrimaryExpression)
+static Node *parsePrimaryExpression(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((ret = parseIdentifier(state, parent))) return ret;
     if ((ret = parseConstant(state, parent))) return ret;
-
     if ((tok = expect(state, TOK_LPAREN))) {
         /* parenthesized expression */
-        MKRETT(NODE_PAREN, 2);
-        REQUIREP(0, Expression);
-        REQUIRET(1, TOK_RPAREN);
+        do { ret = newNode(parent, NODE_PAREN, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((ret = parseGenericSelection(state, parent))) return ret;
     if ((ret = parseExpressionDecorator(state, parent))) return ret;
-
     return NULL;
 }
-
 /***************************************************************
  * DECLARATIONS                                                *
  **************************************************************/
-PARSER(Declarator);
-PARSER(TypeQualifier);
-PARSER(AbstractDeclarator);
-PARSER(PointerOpt);
-PARSER(SpecifierQualifierList);
-PARSER(ParameterTypeListOpt);
-PARSER(DeclarationSpecifiers);
-PARSER(TypeQualifierList);
-PARSER(TypeQualifierListOpt);
-PARSER(Initializer);
-PARSER(DeclarationDecoratorList);
-
+static Node *parseDeclarator(ParseState *state, Node *parent);
+static Node *parseTypeQualifier(ParseState *state, Node *parent);
+static Node *parseAbstractDeclarator(ParseState *state, Node *parent);
+static Node *parsePointerOpt(ParseState *state, Node *parent);
+static Node *parseSpecifierQualifierList(ParseState *state, Node *parent);
+static Node *parseParameterTypeListOpt(ParseState *state, Node *parent);
+static Node *parseDeclarationSpecifiers(ParseState *state, Node *parent);
+static Node *parseTypeQualifierList(ParseState *state, Node *parent);
+static Node *parseTypeQualifierListOpt(ParseState *state, Node *parent);
+static Node *parseInitializer(ParseState *state, Node *parent);
+static Node *parseDeclarationDecoratorList(ParseState *state, Node *parent);
 /* the third argument prevents multiple specifiers, particularly ID ID (since
  * this parser is typedef-ambiguous) */
 static Node *parseTypeSpecifier(ParseState *state, Node *parent, int *foundSpecifier);
-
-PARSER(StaticAssertDeclaration)
+static Node *parseStaticAssertDeclaration(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if (!(tok = expect(state, TOK__Static_assert))) return NULL;
-
-    MKRETT(NODE_STATIC_ASSERT_DECLARATION, 6);
-    REQUIRET(0, TOK_LPAREN);
-    REQUIREP(1, ConditionalExpression);
-    REQUIRET(2, TOK_COMMA);
-    REQUIRET(3, TOK_STR_LITERAL);
-    REQUIRET(4, TOK_RPAREN);
-    REQUIRET(5, TOK_SEMICOLON);
-
+    do { ret = newNode(parent, NODE_STATIC_ASSERT_DECLARATION, tok, 6); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+    { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[1] = parseConditionalExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[2] = expectN(state, ret, TOK_COMMA))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_STR_LITERAL))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[4] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[5] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
-PARSER(Designator)
+static Node *parseDesignator(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_LBRACKET))) {
-        MKRETT(NODE_DESIGNATOR, 2);
-        REQUIREP(0, ConditionalExpression);
-        REQUIRET(1, TOK_RBRACKET);
+        do { ret = newNode(parent, NODE_DESIGNATOR, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseConditionalExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RBRACKET))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_DOT))) {
-        MKRETT(NODE_DESIGNATOR, 1);
-        REQUIREP(0, Identifier);
+        do { ret = newNode(parent, NODE_DESIGNATOR, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseIdentifier(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-CONCAT_LIST(DesignatorList, NODE_DESIGNATOR_LIST, Designator)
-
-PARSER(Designation)
+static Node *parseDesignatorListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseDesignator(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_DESIGNATOR_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseDesignatorList(ParseState *state, Node *parent) { return parseDesignatorListL(state, parent, 1); } static Node *parseDesignatorListOpt(ParseState *state, Node *parent) { return parseDesignatorListL(state, parent, 0); }
+static Node *parseDesignation(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     if (!(node = parseDesignatorList(state, parent))) return NULL;
-
-    MKRETN(NODE_DESIGNATION, 2);
-    REQUIRET(1, TOK_ASG);
+    do { ret = newNode(parent, NODE_DESIGNATION, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_ASG))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-OPT(Designation)
-
-PARSER(DesignationInitializer)
+static Node *parseDesignationOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseDesignation(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseDesignationInitializer(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     if (!(node = parseDesignationOpt(state, parent))) return NULL;
-
-    MKRETN(NODE_DESIGNATION_INITIALIZER, 2);
-    REQUIREP(1, Initializer);
-
+    do { ret = newNode(parent, NODE_DESIGNATION_INITIALIZER, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = parseInitializer(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
-COMMA_LIST(InitializerList, NODE_INITIALIZER_LIST, DesignationInitializer)
-
-PARSER(Initializer)
+static Node *parseInitializerListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseDesignationInitializer(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseDesignationInitializer(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_INITIALIZER_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseInitializerList(ParseState *state, Node *parent) { return parseInitializerListL(state, parent, 1); } static Node *parseInitializerListOpt(ParseState *state, Node *parent) { return parseInitializerListL(state, parent, 0); }
+static Node *parseInitializer(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((ret = parseAssignmentExpression(state, parent))) return ret;
-
     if ((tok = expect(state, TOK_LBRACE))) {
-        MKRETT(NODE_INITIALIZER, 3);
-        REQUIREP(0, InitializerList);
-
+        do { ret = newNode(parent, NODE_INITIALIZER, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseInitializerList(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         /* ending , is optional */
         if ((ret->children[1] = expectN(state, ret, TOK_COMMA))) {
-            REQUIRET(2, TOK_RBRACE);
+            { if (!(ret->children[2] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         } else {
-            REQUIRET(1, TOK_RBRACE);
+            { if (!(ret->children[1] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         }
-
         return ret;
     }
-
     return NULL;
 }
-
-#define RESTORE { RESTOREN(); return NULL; }
 static Node *parseDirectAbstractDeclaratorA1(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 5);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIREPR(2, TypeQualifierListOpt);
-    REQUIREPR(3, AssignmentExpressionOpt);
-    REQUIRETR(4, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_ABSTRACT_DECLARATOR, NULL, 5); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseTypeQualifierListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = parseAssignmentExpressionOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[4] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectAbstractDeclaratorA2(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIRETR(2, TOK_static);
-    REQUIREPR(3, TypeQualifierListOpt);
-    REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_ABSTRACT_DECLARATOR, NULL, 6); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = expectN(state, ret, TOK_static))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = parseTypeQualifierListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[4] = parseAssignmentExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[5] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectAbstractDeclaratorA3(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIREPR(2, TypeQualifierList);
-    REQUIRETR(3, TOK_static);
-    REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_ABSTRACT_DECLARATOR, NULL, 6); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseTypeQualifierList(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_static))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[4] = parseAssignmentExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[5] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectAbstractDeclaratorA4(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 4);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIRETR(2, TOK_STAR);
-    REQUIRETR(3, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_ABSTRACT_DECLARATOR, NULL, 4); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = expectN(state, ret, TOK_STAR))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectAbstractDeclaratorF(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_ABSTRACT_DECLARATOR, 4);
-    REQUIRETR(1, TOK_LPAREN);
-    REQUIREPR(2, ParameterTypeListOpt);
-    REQUIRETR(3, TOK_RPAREN);
+    do { ret = newNode(parent, NODE_DIRECT_ABSTRACT_DECLARATOR, NULL, 4); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LPAREN))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseParameterTypeListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_RPAREN))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-#undef RESTORE
-
-PARSER(DirectAbstractDeclarator)
+static Node *parseDirectAbstractDeclarator(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     Token *tok;
-
     node = NULL;
-
     if ((tok = expect(state, TOK_LPAREN))) {
-        MKRETT(NODE_DIRECT_ABSTRACT_DECLARATOR, 2);
-#define RESTORE { pushNode(state, ret); freeNode(ret); goto pdadrestore; }
-        REQUIREPR(0, AbstractDeclarator);
-        REQUIRETR(1, TOK_RPAREN);
-#undef RESTORE
+        do { ret = newNode(parent, NODE_DIRECT_ABSTRACT_DECLARATOR, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseAbstractDeclarator(state, ret))) { { pushNode(state, ret); freeNode(ret); goto pdadrestore; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); goto pdadrestore; } } };
         node = ret;
-
     }
-
     if (0) {
 pdadrestore:
         node = NULL;
     }
-
     if (!node)
         node = newNode(parent, NODE_DIRECT_ABSTRACT_DECLARATOR, NULL, 0);
-
     while (1) {
         if ((ret = parseDirectAbstractDeclaratorA1(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectAbstractDeclaratorA2(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectAbstractDeclaratorA3(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectAbstractDeclaratorA4(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectAbstractDeclaratorF(state, parent, node))) {
             node = ret;
             continue;
         }
-
         break;
     }
-
     return node;
 }
-OPT(AbstractDeclarator)
-
-PARSER(AbstractDeclarator)
+static Node *parseAbstractDeclaratorOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseAbstractDeclarator(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseAbstractDeclarator(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if (!(node = parsePointerOpt(state, parent))) return NULL;
-
     if (!(node2 = parseDirectAbstractDeclarator(state, parent))) {
         /* if the direct-abstract-declarator is not present, the pointer is mandatory */
         if (!node->children[0]) {
@@ -930,276 +594,214 @@ PARSER(AbstractDeclarator)
         }
         return node;
     }
-
-    MKRETN2(NODE_ABSTRACT_DECLARATOR, 2);
+    do { ret = newNode(parent, NODE_ABSTRACT_DECLARATOR, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
     return ret;
 }
-
-PARSER(TypeName)
+static Node *parseTypeName(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     if (!(node = parseSpecifierQualifierList(state, parent))) return NULL;
-
-    MKRETN(NODE_TYPE_NAME, 2);
-    REQUIREP(1, AbstractDeclaratorOpt);
+    do { ret = newNode(parent, NODE_TYPE_NAME, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = parseAbstractDeclaratorOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
-COMMA_LIST(IdentifierList, NODE_IDENTIFIER_LIST, Identifier)
-
-PARSER(ParameterDeclaration)
+static Node *parseIdentifierListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseIdentifier(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseIdentifier(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_IDENTIFIER_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseIdentifierList(ParseState *state, Node *parent) { return parseIdentifierListL(state, parent, 1); } static Node *parseIdentifierListOpt(ParseState *state, Node *parent) { return parseIdentifierListL(state, parent, 0); }
+static Node *parseParameterDeclaration(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if (!(node = parseDeclarationSpecifiers(state, parent))) return NULL;
-
     if ((node2 = parseDeclarator(state, parent))) {
-        MKRETN2(NODE_PARAMETER_DECLARATION, 2);
+        do { ret = newNode(parent, NODE_PARAMETER_DECLARATION, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
         return ret;
-
     } else if ((node2 = parseAbstractDeclaratorOpt(state, parent))) {
-        MKRETN2(NODE_PARAMETER_DECLARATION, 2);
+        do { ret = newNode(parent, NODE_PARAMETER_DECLARATION, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
         return ret;
-
     } else {
         pushNode(state, node);
         freeNode(node);
-
         return NULL;
-
     }
 }
-
-COMMA_LIST(ParameterList, NODE_PARAMETER_LIST, ParameterDeclaration)
-
-PARSER(ParameterTypeList)
+static Node *parseParameterListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseParameterDeclaration(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseParameterDeclaration(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_PARAMETER_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseParameterList(ParseState *state, Node *parent) { return parseParameterListL(state, parent, 1); } static Node *parseParameterListOpt(ParseState *state, Node *parent) { return parseParameterListL(state, parent, 0); }
+static Node *parseParameterTypeList(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if (!(node = parseParameterList(state, parent))) return NULL;
-
     if ((node2 = expectN(state, parent, TOK_COMMA))) {
-        MKRETN2(NODE_PARAMETER_TYPE_LIST, 3);
-        REQUIRETO(2, TOK_DOTDOTDOT, { RESTOREN(); return node; });
+        do { ret = newNode(parent, NODE_PARAMETER_TYPE_LIST, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+        { if (!(ret->children[2] = expectN(state, ret, TOK_DOTDOTDOT))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
         return ret;
     }
-
     return node;
 }
-OPT(ParameterTypeList)
-
-CONCAT_LIST(TypeQualifierList, NODE_TYPE_QUALIFIER_LIST, TypeQualifier)
-
-PARSER(PointerOpt)
+static Node *parseParameterTypeListOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseParameterTypeList(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseTypeQualifierListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseTypeQualifier(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_TYPE_QUALIFIER_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseTypeQualifierList(ParseState *state, Node *parent) { return parseTypeQualifierListL(state, parent, 1); } static Node *parseTypeQualifierListOpt(ParseState *state, Node *parent) { return parseTypeQualifierListL(state, parent, 0); }
+static Node *parsePointerOpt(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     struct Buffer_Nodep buf;
     size_t i;
-
     INIT_BUFFER(buf);
-
     while ((node = expectN(state, parent, TOK_STAR))) {
         WRITE_ONE_BUFFER(buf, node);
-
         if (!(node = parseTypeQualifierListOpt(state, parent))) {
             node = buf.buf[--buf.bufused];
             pushNode(state, node);
             freeNode(node);
             break;
         }
-
         WRITE_ONE_BUFFER(buf, node);
     }
-
     ret = newNode(parent, NODE_POINTER, NULL, buf.bufused);
     for (i = 0; i < buf.bufused; i++) {
         ret->children[i] = buf.buf[i];
         buf.buf[i]->parent = ret;
     }
-
     FREE_BUFFER(buf);
-
     return ret;
 }
-
-#define RESTORE { RESTOREN(); return NULL; }
 static Node *parseDirectDeclaratorA1(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_DECLARATOR, 5);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIREPR(2, TypeQualifierListOpt);
-    REQUIREPR(3, AssignmentExpressionOpt);
-    REQUIRETR(4, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, NULL, 5); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseTypeQualifierListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = parseAssignmentExpressionOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[4] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectDeclaratorA2(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIRETR(2, TOK_static);
-    REQUIREPR(3, TypeQualifierListOpt);
-    REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, NULL, 6); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = expectN(state, ret, TOK_static))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = parseTypeQualifierListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[4] = parseAssignmentExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[5] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectDeclaratorA3(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_DECLARATOR, 6);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIREPR(2, TypeQualifierList);
-    REQUIRETR(3, TOK_static);
-    REQUIREPR(4, AssignmentExpression);
-    REQUIRETR(5, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, NULL, 6); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseTypeQualifierList(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_static))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[4] = parseAssignmentExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[5] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectDeclaratorA4(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_DECLARATOR, 5);
-    REQUIRETR(1, TOK_LBRACKET);
-    REQUIREPR(2, TypeQualifierListOpt);
-    REQUIRETR(3, TOK_STAR);
-    REQUIRETR(4, TOK_RBRACKET);
+    do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, NULL, 5); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseTypeQualifierListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_STAR))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[4] = expectN(state, ret, TOK_RBRACKET))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectDeclaratorF1(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_DECLARATOR, 4);
-    REQUIRETR(1, TOK_LPAREN);
-    REQUIREPR(2, ParameterTypeList);
-    REQUIRETR(3, TOK_RPAREN);
+    do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, NULL, 4); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LPAREN))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseParameterTypeList(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_RPAREN))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-
 static Node *parseDirectDeclaratorF2(ParseState *state, Node *parent, Node *node)
 {
     Node *ret;
-    MKRETN(NODE_DIRECT_DECLARATOR, 4);
-    REQUIRETR(1, TOK_LPAREN);
-    REQUIREPR(2, IdentifierListOpt);
-    REQUIRETR(3, TOK_RPAREN);
+    do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, NULL, 4); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_LPAREN))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[2] = parseIdentifierListOpt(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
+    { if (!(ret->children[3] = expectN(state, ret, TOK_RPAREN))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return NULL; } } };
     return ret;
 }
-#undef RESTORE
-
-PARSER(DirectDeclarator)
+static Node *parseDirectDeclarator(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     Token *tok;
-
     if ((tok = expect(state, TOK_ID))) {
-        MKRETT(NODE_DIRECT_DECLARATOR, 0);
+        do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, tok, 0); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
         node = ret;
-
     } else if ((tok = expect(state, TOK_LPAREN))) {
-        MKRETT(NODE_DIRECT_DECLARATOR, 2);
-        REQUIREP(0, Declarator);
-        REQUIRET(1, TOK_RPAREN);
+        do { ret = newNode(parent, NODE_DIRECT_DECLARATOR, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseDeclarator(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         node = ret;
-
     } else {
         return NULL;
-
     }
-
     while (1) {
         if ((ret = parseDirectDeclaratorA1(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectDeclaratorA2(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectDeclaratorA3(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectDeclaratorA4(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectDeclaratorF1(state, parent, node))) {
             node = ret;
             continue;
         }
-
         if ((ret = parseDirectDeclaratorF2(state, parent, node))) {
             node = ret;
             continue;
         }
-
         break;
     }
-
     return node;
 }
-
-PARSER(Declarator)
+static Node *parseDeclarator(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     if (!(node = parsePointerOpt(state, parent))) return NULL;
-
-    MKRETN(NODE_DECLARATOR, 2);
-    REQUIREP(1, DirectDeclarator);
-
+    do { ret = newNode(parent, NODE_DECLARATOR, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = parseDirectDeclarator(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
-PARSER(AlignmentSpecifier)
+static Node *parseAlignmentSpecifier(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     Token *tok;
-
     if (!(tok = expect(state, TOK__Alignas))) return NULL;
-
-    MKRETT(NODE_ALIGNMENT_SPECIFIER, 3);
-    REQUIRET(0, TOK_LPAREN);
-
+    do { ret = newNode(parent, NODE_ALIGNMENT_SPECIFIER, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+    { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     if (!(node = parseTypeName(state, ret)) &&
         !(node = parseConditionalExpression(state, ret))) {
         pushNode(state, ret);
         freeNode(ret);
         return NULL;
     }
-
     ret->children[1] = node;
-    REQUIRET(2, TOK_RPAREN);
-
+    { if (!(ret->children[2] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
-PARSER(FunctionSpecifier)
+static Node *parseFunctionSpecifier(ParseState *state, Node *parent)
 {
     Node *ret;
-
     if ((ret = expectN(state, parent, TOK_inline)) ||
         (ret = expectN(state, parent, TOK__Noreturn))) {
         ret->type = NODE_FUNCTION_SPECIFIER;
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(TypeQualifier)
+static Node *parseTypeQualifier(ParseState *state, Node *parent)
 {
     Node *ret;
-
     if ((ret = expectN(state, parent, TOK_const)) ||
         (ret = expectN(state, parent, TOK_restrict)) ||
         (ret = expectN(state, parent, TOK_volatile)) ||
@@ -1207,192 +809,147 @@ PARSER(TypeQualifier)
         ret->type = NODE_TYPE_QUALIFIER;
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(AtomicTypeSpecifier)
+static Node *parseAtomicTypeSpecifier(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if (!(tok = expect(state, TOK__Atomic))) return NULL;
-
-    MKRETT(NODE_ATOMIC_TYPE_SPECIFIER, 3);
-    REQUIRET(0, TOK_LPAREN);
-    REQUIREP(1, TypeName);
-    REQUIRET(2, TOK_RPAREN);
-
+    do { ret = newNode(parent, NODE_ATOMIC_TYPE_SPECIFIER, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+    { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[1] = parseTypeName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[2] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
-PARSER(Enumerator)
+static Node *parseEnumerator(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if (!(node = parseIdentifier(state, parent))) return NULL;
-
     if ((node2 = expectN(state, parent, TOK_ASG))) {
-        MKRETN2(NODE_ENUMERATOR, 3);
-        REQUIREPO(2, ConditionalExpression, { RESTOREN(); return node; });
+        do { ret = newNode(parent, NODE_ENUMERATOR, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+        { if (!(ret->children[2] = parseConditionalExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
         return ret;
     }
-
     return node;
 }
-
-COMMA_LIST(EnumeratorList, NODE_ENUMERATOR_LIST, Enumerator)
-
-PARSER(EnumSpecifier)
+static Node *parseEnumeratorListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseEnumerator(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseEnumerator(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_ENUMERATOR_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseEnumeratorList(ParseState *state, Node *parent) { return parseEnumeratorListL(state, parent, 1); } static Node *parseEnumeratorListOpt(ParseState *state, Node *parent) { return parseEnumeratorListL(state, parent, 0); }
+static Node *parseEnumSpecifier(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_enum))) {
-        MKRETT(NODE_ENUM_SPECIFIER, 5);
-        REQUIREP(0, IdentifierOpt);
-
+        do { ret = newNode(parent, NODE_ENUM_SPECIFIER, tok, 5); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseIdentifierOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         if (ret->children[0]->tok) {
             /* the rest is optional */
             ret->children[1] = expectN(state, ret, TOK_LBRACE);
-
         } else {
             /* the rest is mandatory */
-            REQUIRET(1, TOK_LBRACE);
-
+            { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         }
-
         if (ret->children[1]) {
-            REQUIREP(2, EnumeratorList);
+            { if (!(ret->children[2] = parseEnumeratorList(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
             if ((ret->children[3] = expectN(state, ret, TOK_COMMA))) {
-                REQUIRET(4, TOK_RBRACE);
+                { if (!(ret->children[4] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
             } else {
-                REQUIRET(3, TOK_RBRACE);
+                { if (!(ret->children[3] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
             }
         }
-
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(StructDeclarator)
+static Node *parseStructDeclarator(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
     Token *tok;
-
     if ((node = parseDeclarator(state, parent))) {
         if ((node2 = expectN(state, parent, TOK_COLON))) {
-            MKRETN2(NODE_BITFIELD_DECLARATOR, 3);
-            REQUIREPO(2, Constant, { RESTOREN(); return node; });
+            do { ret = newNode(parent, NODE_BITFIELD_DECLARATOR, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+            { if (!(ret->children[2] = parseConstant(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
             return ret;
         }
         return node;
-
     } else if ((tok = expect(state, TOK_COLON))) {
-        MKRETT(NODE_BITFIELD_PADDING, 1);
-        REQUIREP(0, Constant);
+        do { ret = newNode(parent, NODE_BITFIELD_PADDING, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseConstant(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
-
     }
-
     return NULL;
 }
-
-COMMA_LIST(StructDeclaratorList, NODE_STRUCT_DECLARATOR_LIST, StructDeclarator)
-
+static Node *parseStructDeclaratorListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseStructDeclarator(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseStructDeclarator(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_STRUCT_DECLARATOR_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseStructDeclaratorList(ParseState *state, Node *parent) { return parseStructDeclaratorListL(state, parent, 1); } static Node *parseStructDeclaratorListOpt(ParseState *state, Node *parent) { return parseStructDeclaratorListL(state, parent, 0); }
 static Node *parseSpecifierQualifierListL(ParseState *state, Node *parent, int need1)
 {
     Node *ret;
     struct Buffer_Nodep buf;
     size_t i;
     int foundSpecifier = 0;
-
     INIT_BUFFER(buf);
-
     while ((ret = parseTypeSpecifier(state, parent, &foundSpecifier)) ||
            (ret = parseTypeQualifier(state, parent))) {
         WRITE_ONE_BUFFER(buf, ret);
     }
-
     if (need1 && buf.bufused == 0) {
         FREE_BUFFER(buf);
         return NULL;
     }
-
     ret = newNode(parent, NODE_SPECIFIER_QUALIFIER_LIST, NULL, buf.bufused);
     for (i = 0; i < buf.bufused; i++) {
         ret->children[i] = buf.buf[i];
         buf.buf[i]->parent = ret;
     }
-
     /* and finally, the whole thing can have a decoration */
     {
         Node *node, *node2;
         if ((node2 = parseDeclarationDecoratorList(state, parent))) {
             node = ret;
-            MKRETN2(NODE_DECORATED_SPECIFIER_QUALIFIER_LIST, 2);
+            do { ret = newNode(parent, NODE_DECORATED_SPECIFIER_QUALIFIER_LIST, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
         }
     }
-
     FREE_BUFFER(buf);
     return ret;
 }
-PARSER_LIST(SpecifierQualifierList)
-
-PARSER(StructDeclaration)
+static Node *parseSpecifierQualifierList(ParseState *state, Node *parent) { return parseSpecifierQualifierListL(state, parent, 1); } static Node *parseSpecifierQualifierListOpt(ParseState *state, Node *parent) { return parseSpecifierQualifierListL(state, parent, 0); }
+static Node *parseStructDeclaration(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     if ((node = parseSpecifierQualifierList(state, parent))) {
-        MKRETN(NODE_STRUCT_DECLARATION, 3);
-        REQUIREP(1, StructDeclaratorListOpt);
-        REQUIRET(2, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_STRUCT_DECLARATION, NULL, 3); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+        { if (!(ret->children[1] = parseStructDeclaratorListOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((ret = parseStaticAssertDeclaration(state, parent))) return ret;
-
     return NULL;
 }
-
-CONCAT_LIST(StructDeclarationList, NODE_STRUCT_DECLARATION_LIST, StructDeclaration)
-
-PARSER(StructOrUnionSpecifier)
+static Node *parseStructDeclarationListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseStructDeclaration(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_STRUCT_DECLARATION_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseStructDeclarationList(ParseState *state, Node *parent) { return parseStructDeclarationListL(state, parent, 1); } static Node *parseStructDeclarationListOpt(ParseState *state, Node *parent) { return parseStructDeclarationListL(state, parent, 0); }
+static Node *parseStructOrUnionSpecifier(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_struct)) ||
         (tok = expect(state, TOK_union))) {
-        MKRETT(NODE_STRUCT_OR_UNION_SPECIFIER, 4);
-        REQUIREP(0, IdentifierOpt);
+        do { ret = newNode(parent, NODE_STRUCT_OR_UNION_SPECIFIER, tok, 4); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseIdentifierOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         if (ret->children[0]->tok) {
             /* the rest is optional */
             ret->children[1] = expectN(state, ret, TOK_LBRACE);
-
         } else {
             /* the rest is mandatory */
-            REQUIRET(1, TOK_LBRACE);
-
+            { if (!(ret->children[1] = expectN(state, ret, TOK_LBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         }
-
         if (ret->children[1]) {
-            REQUIREP(2, StructDeclarationList);
-            REQUIRET(3, TOK_RBRACE);
+            { if (!(ret->children[2] = parseStructDeclarationList(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+            { if (!(ret->children[3] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         }
-
         return ret;
     }
-
     return NULL;
 }
-
 static Node *parseTypeSpecifier(ParseState *state, Node *parent, int *foundSpecifier)
 {
     Node *ret;
-
     if ((ret = expectN(state, parent, TOK_void)) ||
         (ret = expectN(state, parent, TOK_char)) ||
         (ret = expectN(state, parent, TOK_short)) ||
@@ -1408,14 +965,12 @@ static Node *parseTypeSpecifier(ParseState *state, Node *parent, int *foundSpeci
         ret->type = NODE_TYPE_SPECIFIER;
         return ret;
     }
-
     /* ID's are included as typedef-name */
     if (!*foundSpecifier && (ret = expectN(state, parent, TOK_ID))) {
         *foundSpecifier = 1;
         ret->type = NODE_TYPE_SPECIFIER;
         return ret;
     }
-
     if ((ret = parseAtomicTypeSpecifier(state, parent))) {
         *foundSpecifier = 1;
         return ret;
@@ -1428,11 +983,9 @@ static Node *parseTypeSpecifier(ParseState *state, Node *parent, int *foundSpeci
         *foundSpecifier = 1;
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(StorageClassSpecifier)
+static Node *parseStorageClassSpecifier(ParseState *state, Node *parent)
 {
     Node *ret;
     if ((ret = expectN(state, parent, TOK_typedef)) ||
@@ -1446,67 +999,52 @@ PARSER(StorageClassSpecifier)
     }
     return NULL;
 }
-
-PARSER(InitDeclarator)
+static Node *parseInitDeclarator(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if (!(node = parseDeclarator(state, parent))) return NULL;
-
     if ((node2 = expectN(state, parent, TOK_ASG))) {
-        MKRETN2(NODE_INIT_DECLARATOR, 3);
-        REQUIREPO(2, Initializer, { RESTOREN(); return node; });
+        do { ret = newNode(parent, NODE_INIT_DECLARATOR, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+        { if (!(ret->children[2] = parseInitializer(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); return node; } } };
         return ret;
     }
-
     return node;
 }
-
-COMMA_LIST(InitDeclaratorList, NODE_INIT_DECLARATOR_LIST, InitDeclarator)
-
-PARSER(DeclarationSpecifiers)
+static Node *parseInitDeclaratorListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); if ((node = parseInitDeclarator(state, parent))) { WRITE_ONE_BUFFER(buf, node); while ((node = expectN(state, parent, TOK_COMMA))) { WRITE_ONE_BUFFER(buf, node); if (!(node = parseInitDeclarator(state, parent))) { node = buf.buf[buf.bufused-1]; buf.bufused--; pushNode(state, node); freeNode(node); break; } WRITE_ONE_BUFFER(buf, node); } } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_INIT_DECLARATOR_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; ret->children[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseInitDeclaratorList(ParseState *state, Node *parent) { return parseInitDeclaratorListL(state, parent, 1); } static Node *parseInitDeclaratorListOpt(ParseState *state, Node *parent) { return parseInitDeclaratorListL(state, parent, 0); }
+static Node *parseDeclarationSpecifiers(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
     struct Buffer_Nodep buf;
     size_t i;
     int foundSpecifier = 0;
-
     INIT_BUFFER(buf);
-
     while (1) {
         if ((node = parseStorageClassSpecifier(state, parent))) {
             WRITE_ONE_BUFFER(buf, node);
             continue;
         }
-
         if ((node = parseTypeSpecifier(state, parent, &foundSpecifier))) {
             WRITE_ONE_BUFFER(buf, node);
             continue;
         }
-
         if ((node = parseTypeQualifier(state, parent))) {
             WRITE_ONE_BUFFER(buf, node);
             continue;
         }
-
         if ((node = parseFunctionSpecifier(state, parent))) {
             WRITE_ONE_BUFFER(buf, node);
             continue;
         }
-
         if ((node = parseAlignmentSpecifier(state, parent))) {
             WRITE_ONE_BUFFER(buf, node);
             continue;
         }
-
         break;
     }
-
     if (buf.bufused == 0) {
         FREE_BUFFER(buf);
         return NULL;
     }
-
     ret = newNode(parent, NODE_DECLARATION_SPECIFIERS, NULL, buf.bufused);
     if (!ret) {
         for (i = 0; i < buf.bufused; i++) {
@@ -1516,245 +1054,201 @@ PARSER(DeclarationSpecifiers)
         FREE_BUFFER(buf);
         return NULL;
     }
-
     for (i = 0; i < buf.bufused; i++) {
         ret->children[i] = buf.buf[i];
         buf.buf[i]->parent = ret;
     }
-
     /* and the whole thing can have a type decoration */
     if ((node2 = parseDeclarationDecoratorList(state, parent))) {
         node = ret;
-        MKRETN2(NODE_DECORATED_DECLARATION_SPECIFIERS, 2);
+        do { ret = newNode(parent, NODE_DECORATED_DECLARATION_SPECIFIERS, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
     }
-
     FREE_BUFFER(buf);
     return ret;
 }
-
-PARSER(Declaration)
+static Node *parseDeclaration(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if ((node = parseDeclarationDecoratorList(state, parent))) {
         if ((node2 = parseDeclaration(state, parent))) {
-            MKRETN2(NODE_DECORATED_DECLARATION, 2);
+            do { ret = newNode(parent, NODE_DECORATED_DECLARATION, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
             return ret;
         } else if ((node2 = expectN(state, parent, TOK_SEMICOLON))) {
-            MKRETN2(NODE_DECORATION_DECLARATION, 2);
+            do { ret = newNode(parent, NODE_DECORATION_DECLARATION, NULL, 2); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
             return ret;
         }
-
         pushNode(state, node);
         freeNode(node);
         return NULL;
     }
-
     if ((node = parseDeclarationSpecifiers(state, parent))) {
-        MKRETN(NODE_DECLARATION, 3);
-        REQUIREP(1, InitDeclaratorListOpt);
-        REQUIRET(2, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_DECLARATION, NULL, 3); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+        { if (!(ret->children[1] = parseInitDeclaratorListOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return parseStaticAssertDeclaration(state, parent);
 }
-
 /***************************************************************
  * STATEMENTS                                                  *
  ***************************************************************/
-PARSER(Statement);
-
-PARSER(JumpStatement)
+static Node *parseStatement(ParseState *state, Node *parent);
+static Node *parseJumpStatement(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_goto))) {
-        MKRETT(NODE_GOTO_STATEMENT, 2);
-        REQUIREP(0, Identifier);
-        REQUIRET(1, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_GOTO_STATEMENT, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseIdentifier(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_continue))) {
-        MKRETT(NODE_CONTINUE_STATEMENT, 1);
-        REQUIRET(0, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_CONTINUE_STATEMENT, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_break))) {
-        MKRETT(NODE_BREAK_STATEMENT, 1);
-        REQUIRET(0, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_BREAK_STATEMENT, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_return))) {
-        MKRETT(NODE_RETURN_STATEMENT, 2);
-        REQUIREP(0, ExpressionOpt);
-        REQUIRET(1, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_RETURN_STATEMENT, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseExpressionOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(ForInitializer)
+static Node *parseForInitializer(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     /* declaration | expressionopt ; */
     if ((ret = parseDeclaration(state, parent))) return ret;
-
     if ((node = parseExpressionOpt(state, parent))) {
-        MKRETN(NODE_FOR_INITIALIZER, 2);
-        REQUIRET(1, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_FOR_INITIALIZER, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+        { if (!(ret->children[1] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(IterationStatement)
+static Node *parseIterationStatement(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_while))) {
-        MKRETT(NODE_WHILE_STATEMENT, 4);
-        REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, Expression);
-        REQUIRET(2, TOK_RPAREN);
-        REQUIREP(3, Statement);
+        do { ret = newNode(parent, NODE_WHILE_STATEMENT, tok, 4); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_do))) {
-        MKRETT(NODE_DO_WHILE_STATEMENT, 6);
-        REQUIREP(0, Statement);
-        REQUIRET(1, TOK_while);
-        REQUIRET(2, TOK_LPAREN);
-        REQUIREP(3, Expression);
-        REQUIRET(4, TOK_RPAREN);
-        REQUIRET(5, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_DO_WHILE_STATEMENT, tok, 6); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_while))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = parseExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[4] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[5] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_for))) {
-        MKRETT(NODE_FOR_STATEMENT, 7);
-        REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, ForInitializer);
-        REQUIREP(2, ExpressionOpt);
-        REQUIRET(3, TOK_SEMICOLON);
-        REQUIREP(4, ExpressionOpt);
-        REQUIRET(5, TOK_RPAREN);
-        REQUIREP(6, Statement);
+        do { ret = newNode(parent, NODE_FOR_STATEMENT, tok, 7); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseForInitializer(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseExpressionOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[4] = parseExpressionOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[5] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[6] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(SelectionStatement)
+static Node *parseSelectionStatement(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_if))) {
-        MKRETT(NODE_IF_STATEMENT, 6);
-        REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, Expression);
-        REQUIRET(2, TOK_RPAREN);
-        REQUIREP(3, Statement);
-
+        do { ret = newNode(parent, NODE_IF_STATEMENT, tok, 6); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         /* optional else clause */
         if ((ret->children[4] = expectN(state, ret, TOK_else)))
-            REQUIREP(5, Statement);
-
+            { if (!(ret->children[5] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_switch))) {
-        MKRETT(NODE_SWITCH_STATEMENT, 4);
-        REQUIRET(0, TOK_LPAREN);
-        REQUIREP(1, Expression);
-        REQUIRET(2, TOK_RPAREN);
-        REQUIREP(3, Statement);
+        do { ret = newNode(parent, NODE_SWITCH_STATEMENT, tok, 4); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(ExpressionStatement)
+static Node *parseExpressionStatement(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     if ((node = parseExpressionOpt(state, parent))) {
-        MKRETN(NODE_EXPRESSION_STATEMENT, 2);
-        REQUIRET(1, TOK_SEMICOLON);
+        do { ret = newNode(parent, NODE_EXPRESSION_STATEMENT, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+        { if (!(ret->children[1] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(BlockItem)
+static Node *parseBlockItem(ParseState *state, Node *parent)
 {
     Node *ret;
     if ((ret = parseDeclaration(state, parent))) return ret;
     if ((ret = parseStatement(state, parent))) return ret;
     return NULL;
 }
-
-CONCAT_LIST(BlockItemList, NODE_BLOCK_ITEM_LIST, BlockItem)
-
-PARSER(CompoundStatement)
+static Node *parseBlockItemListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseBlockItem(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_BLOCK_ITEM_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseBlockItemList(ParseState *state, Node *parent) { return parseBlockItemListL(state, parent, 1); } static Node *parseBlockItemListOpt(ParseState *state, Node *parent) { return parseBlockItemListL(state, parent, 0); }
+static Node *parseCompoundStatement(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_LBRACE))) {
-        MKRETT(NODE_BLOCK, 2);
-        REQUIREP(0, BlockItemListOpt);
-        REQUIRET(1, TOK_RBRACE);
+        do { ret = newNode(parent, NODE_BLOCK, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseBlockItemListOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(LabeledStatement)
+static Node *parseLabeledStatement(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_ID))) {
-        MKRETT(NODE_LABELED_STATEMENT, 2);
-        REQUIRET(0, TOK_COLON);
-        REQUIREP(1, Statement);
+        do { ret = newNode(parent, NODE_LABELED_STATEMENT, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_COLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_case))) {
-        MKRETT(NODE_CASE_STATEMENT, 3);
-        REQUIREP(0, ConditionalExpression);
-        REQUIRET(1, TOK_COLON);
-        REQUIREP(2, Statement);
+        do { ret = newNode(parent, NODE_CASE_STATEMENT, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseConditionalExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_COLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_default))) {
-        MKRETT(NODE_DEFAULT_STATEMENT, 2);
-        REQUIRET(0, TOK_COLON);
-        REQUIREP(1, Statement);
+        do { ret = newNode(parent, NODE_DEFAULT_STATEMENT, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = expectN(state, ret, TOK_COLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(Statement)
+static Node *parseStatement(ParseState *state, Node *parent)
 {
     Node *ret;
     if ((ret = parseLabeledStatement(state, parent))) return ret;
@@ -1765,105 +1259,85 @@ PARSER(Statement)
     if ((ret = parseJumpStatement(state, parent))) return ret;
     return NULL;
 }
-
 /***************************************************************
  * TRANSLATION UNIT                                            *
  ***************************************************************/
-CONCAT_LIST(DeclarationList, NODE_DECLARATION_LIST, Declaration)
-
-PARSER(FunctionDefinition)
+static Node *parseDeclarationListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseDeclaration(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_DECLARATION_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseDeclarationList(ParseState *state, Node *parent) { return parseDeclarationListL(state, parent, 1); } static Node *parseDeclarationListOpt(ParseState *state, Node *parent) { return parseDeclarationListL(state, parent, 0); }
+static Node *parseFunctionDefinition(ParseState *state, Node *parent)
 {
     Node *ret, *node;
-
     if ((node = parseDeclarationDecoratorList(state, parent))) {
-        MKRETN(NODE_DECORATED_FUNCTION_DEFINITION, 2);
-        REQUIREP(1, FunctionDefinition);
+        do { ret = newNode(parent, NODE_DECORATED_FUNCTION_DEFINITION, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+        { if (!(ret->children[1] = parseFunctionDefinition(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if (!(node = parseDeclarationSpecifiers(state, parent))) return NULL;
-    MKRETN(NODE_FUNCTION_DEFINITION, 3);
-    REQUIREP(1, Declarator);
-    REQUIREP(2, CompoundStatement);
+    do { ret = newNode(parent, NODE_FUNCTION_DEFINITION, NULL, 3); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = parseDeclarator(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[2] = parseCompoundStatement(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
-PARSER(ExternalDeclaration)
+static Node *parseExternalDeclaration(ParseState *state, Node *parent)
 {
     Node *ret;
     if ((ret = parseFunctionDefinition(state, parent))) return ret;
     if ((ret = parseDeclaration(state, parent))) return ret;
     return NULL;
 }
-
-CONCAT_LIST(TranslationUnit, NODE_TRANSLATION_UNIT, ExternalDeclaration)
-
-PARSER(Top)
+static Node *parseTranslationUnitL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseExternalDeclaration(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_TRANSLATION_UNIT, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseTranslationUnit(ParseState *state, Node *parent) { return parseTranslationUnitL(state, parent, 1); } static Node *parseTranslationUnitOpt(ParseState *state, Node *parent) { return parseTranslationUnitL(state, parent, 0); }
+static Node *parseTop(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     if (!(node = parseTranslationUnit(state, parent)))
         /* allow empty translation units */
         node = newNode(parent, NODE_TRANSLATION_UNIT, NULL, 0);
-    MKRETN(NODE_FILE, 2);
-    REQUIRET(1, TOK_TERM);
+    do { ret = newNode(parent, NODE_FILE, NULL, 2); if (!ret) { pushNode(state, node); freeNode(node); return NULL; } ret->children[0] = node; node->parent = ret; } while (0);
+    { if (!(ret->children[1] = expectN(state, ret, TOK_TERM))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-
 /***************************************************************
  * DECORATION                                                  *
  ***************************************************************/
-PARSER(DecorationOpenOpt);
-
-PARSER(DecorationSubDeclaration)
+static Node *parseDecorationOpenOpt(ParseState *state, Node *parent);
+static Node *parseDecorationSubDeclaration(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if (!(tok = expect(state, TOK_LBRACE))) return NULL;
-
-    MKRETT(NODE_DECORATION_SUB_DECLARATION, 2);
-    REQUIREP(0, TranslationUnitOpt);
-    REQUIRET(1, TOK_RBRACE);
+    do { ret = newNode(parent, NODE_DECORATION_SUB_DECLARATION, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+    { if (!(ret->children[0] = parseTranslationUnitOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[1] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     return ret;
 }
-OPT(DecorationSubDeclaration)
-
-PARSER(DeclarationDecorator)
+static Node *parseDecorationSubDeclarationOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseDecorationSubDeclaration(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseDeclarationDecorator(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_DECORATION))) {
-        MKRETT(NODE_DECLARATION_DECORATOR, 3);
-        REQUIREP(0, DecorationName);
-        REQUIREP(1, DecorationOpenOpt);
-        REQUIREP(2, DecorationSubDeclarationOpt);
+        do { ret = newNode(parent, NODE_DECLARATION_DECORATOR, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseDecorationName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseDecorationOpenOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseDecorationSubDeclarationOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_OPEN_DECORATION))) {
-        MKRETT(NODE_DECLARATION_DECORATOR, 4);
-        REQUIREP(0, DecorationName);
-        REQUIREP(1, DecorationOpenOpt);
-        REQUIREP(2, DecorationSubDeclarationOpt);
-        REQUIRET(3, TOK_CLOSE_DECORATION);
+        do { ret = newNode(parent, NODE_DECLARATION_DECORATOR, tok, 4); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseDecorationName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseDecorationOpenOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseDecorationSubDeclarationOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = expectN(state, ret, TOK_CLOSE_DECORATION))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-CONCAT_LIST(DeclarationDecoratorList, NODE_DECLARATION_DECORATOR_LIST, DeclarationDecorator)
-
-PARSER(DecorationSubExpression)
+static Node *parseDeclarationDecoratorListL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseDeclarationDecorator(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_DECLARATION_DECORATOR_LIST, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseDeclarationDecoratorList(ParseState *state, Node *parent) { return parseDeclarationDecoratorListL(state, parent, 1); } static Node *parseDeclarationDecoratorListOpt(ParseState *state, Node *parent) { return parseDeclarationDecoratorListL(state, parent, 0); }
+static Node *parseDecorationSubExpression(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
     Token *tok;
-
     if (!(tok = expect(state, TOK_LBRACE))) return NULL;
-
-    MKRETT(NODE_DECORATION_SUB_EXPRESSION, 2);
-
+    do { ret = newNode(parent, NODE_DECORATION_SUB_EXPRESSION, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
     /* expression form */
     if ((node = parseExpressionOpt(state, ret))) {
         if ((node2 = expectN(state, ret, TOK_RBRACE))) {
@@ -1874,148 +1348,117 @@ PARSER(DecorationSubExpression)
         pushNode(state, node);
         freeNode(node);
     }
-
     /* statement form */
     if ((node = parseBlockItemList(state, ret))) {
         ret->children[0] = node;
-        REQUIRET(1, TOK_RBRACE);
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RBRACE))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     /* failure form! */
     pushNode(state, ret);
     freeNode(ret);
     return NULL;
 }
-OPT(DecorationSubExpression)
-
-PARSER(ExpressionDecorator)
+static Node *parseDecorationSubExpressionOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseDecorationSubExpression(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
+static Node *parseExpressionDecorator(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_DECORATION))) {
-        MKRETT(NODE_EXPRESSION_DECORATOR, 3);
-        REQUIREP(0, DecorationName);
-        REQUIREP(1, DecorationOpenOpt);
-        REQUIREP(2, DecorationSubExpressionOpt);
+        do { ret = newNode(parent, NODE_EXPRESSION_DECORATOR, tok, 3); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseDecorationName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseDecorationOpenOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseDecorationSubExpressionOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     if ((tok = expect(state, TOK_OPEN_DECORATION))) {
-        MKRETT(NODE_EXPRESSION_DECORATOR, 4);
-        REQUIREP(0, DecorationName);
-        REQUIREP(1, DecorationOpenOpt);
-        REQUIREP(2, DecorationSubExpressionOpt);
-        REQUIRET(3, TOK_CLOSE_DECORATION);
+        do { ret = newNode(parent, NODE_EXPRESSION_DECORATOR, tok, 4); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseDecorationName(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = parseDecorationOpenOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[2] = parseDecorationSubExpressionOpt(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[3] = expectN(state, ret, TOK_CLOSE_DECORATION))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-
-PARSER(DecorationOpExpression)
+static Node *parseDecorationOpExpression(ParseState *state, Node *parent)
 {
     Node *ret, *node, *node2;
-
     if (!(node = parseCastExpression(state, parent))) return NULL;
-
     while ((node2 = parseExpressionDecorator(state, parent))) {
-        MKRETN2(NODE_DECORATION_OP, 3);
-        REQUIREPO(2, CastExpression, { RESTOREN(); break; });
+        do { ret = newNode(parent, NODE_DECORATION_OP, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0);
+        { if (!(ret->children[2] = parseCastExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } };
         node = ret;
     }
-
     return node;
 }
-
-PARSER(DecorationOpenCont)
+static Node *parseDecorationOpenCont(ParseState *state, Node *parent)
 {
     Node *ret, *node;
     Token *tok;
     struct Buffer_Nodep buf;
     size_t i;
     ssize_t depth = 0;
-
     INIT_BUFFER(buf);
-
     while (1) {
         tok = scan(state); /* FIXME: NULL */
         if (tok->type == TOK_LPAREN) {
             depth++;
-
         } else if (tok->type == TOK_RPAREN) {
             if ((depth--) == 0) {
                 pushToken(state, tok);
                 break;
             }
-
         } else if (tok->type == TOK_TERM) {
             pushToken(state, tok);
             break;
-
         }
-
         node = newNode(parent, NODE_TOK, tok, 0); /* FIXME: NULL */
         WRITE_ONE_BUFFER(buf, node);
     }
-
     /* FXIME: NULL */
     ret = newNode(parent, NODE_DECORATION_OPEN_CONT, NULL, buf.bufused);
-
     for (i = 0; i < buf.bufused; i++) {
         ret->children[i] = buf.buf[i];
         buf.buf[i]->parent = ret;
     }
-
     FREE_BUFFER(buf);
-
     return ret;
 }
-
-PARSER(DecorationOpen)
+static Node *parseDecorationOpen(ParseState *state, Node *parent)
 {
     Node *ret;
     Token *tok;
-
     if ((tok = expect(state, TOK_LPAREN))) {
-        MKRETT(NODE_DECORATION_OPEN, 2);
-        REQUIREP(0, DecorationOpenCont);
-        REQUIRET(1, TOK_RPAREN);
+        do { ret = newNode(parent, NODE_DECORATION_OPEN, tok, 2); if (!ret) { pushToken(state, tok); return NULL; } } while (0);
+        { if (!(ret->children[0] = parseDecorationOpenCont(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+        { if (!(ret->children[1] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
         return ret;
     }
-
     return NULL;
 }
-OPT(DecorationOpen)
-
-
+static Node *parseDecorationOpenOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseDecorationOpen(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
 /***************************************************************
  * ENTRY POINT                                                 *
  ***************************************************************/
-Node *cparse(ScanState *state, char **error)
+ Node *cparse(ScanState *state, char **error)
 {
     ParseState pState;
     Node *ret;
     size_t i;
-
     pState.scanState = state;
     INIT_BUFFER(pState.buf);
     pState.eidx = pState.el = pState.ec = 0;
     INIT_BUFFER(pState.eexpected);
-
     ret = parseTop(&pState, NULL);
-
     if (!ret) {
         /* failed to parse, find out why */
         struct Buffer_char ebuf;
         INIT_BUFFER(ebuf);
-
         while (BUFFER_SPACE(ebuf) <= 29 + 2*3*sizeof(int))
             EXPAND_BUFFER(ebuf);
         ebuf.bufused += sprintf(ebuf.buf + ebuf.bufused,
                                 "At line %d column %d\n expected: ", (int) pState.el, (int) pState.ec);
-
         /* remove redundant expected names */
         for (i = 0; i < pState.eexpected.bufused; i++) {
             size_t j;
@@ -2026,7 +1469,6 @@ Node *cparse(ScanState *state, char **error)
                 }
             }
         }
-
         /* write out each of the expected names */
         for (i = 0; i < pState.eexpected.bufused; i++) {
             const char *tname;
@@ -2037,24 +1479,18 @@ Node *cparse(ScanState *state, char **error)
                 WRITE_BUFFER(ebuf, tname, strlen(tname));
             }
         }
-
         WRITE_BUFFER(ebuf, "\n found: ", 9);
-
         /* and the found name */
         {
             const char *tname = tokenName(pState.efound);
             WRITE_BUFFER(ebuf, tname, strlen(tname));
         }
-
         WRITE_BUFFER(ebuf, "\n", 2);
-
         *error = ebuf.buf;
     }
-
     for (i = 0; i < pState.buf.bufused; i++)
         freeToken(pState.buf.buf[i]);
     FREE_BUFFER(pState.buf);
     FREE_BUFFER(pState.eexpected);
-
     return ret;
 }
