@@ -217,7 +217,7 @@ outer:
 
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
-TransformState transformFile(Spec *spec, char *filename)
+TransformState transformFile(Spec *spec, char *const cflags[], char *filename)
 {
     TransformState state;
     size_t i;
@@ -248,7 +248,7 @@ TransformState transformFile(Spec *spec, char *filename)
             WRITE_BUFFER(loader, ".exc\"\n", 6);
 
 
-            source = execSpec(spec->cpp, NULL, NULL, loader, &tmpi);
+            source = execSpec(spec->cpp, cflags, NULL, NULL, loader, &tmpi);
 
             FREE_BUFFER(loader);
             WRITE_ONE_BUFFER(source, '\0');

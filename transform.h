@@ -69,7 +69,7 @@ void transform(TransformState *state, Node *node, TrFind *find, transform_func_t
 
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
-TransformState transformFile(Spec *spec, char *filename);
+TransformState transformFile(Spec *spec, char *const cflags[], char *filename);
 
 /* free a TransformState */
 void freeTransformState(TransformState *state);

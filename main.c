@@ -16,23 +16,29 @@ int main(int argc, char **argv)
     size_t si;
     char *bindir, *binfil;
     Spec *spec;
-    struct Buffer_charp cflags, excfiles, cfiles;
+    struct Buffer_charp cflags,
+        excfiles, excfileso,
+        cfiles, cfileso,
+        ofiles;
 
     /* flag options */
     int excOnly = 0,
         compileOnly = 0;
     char *specFile = NULL;
     char *outFile = NULL;
+    char *cPrefix = "";
+    char *oPrefix = "";
 
     if (!whereAmI(argv[0], &bindir, &binfil)) {
         fprintf(stderr, "Failed to find binary location, assuming .!\n");
         bindir = ".";
     }
 
-    /* first handle the - arguments */
+    /* first handle the arguments */
     INIT_BUFFER(cflags);
     INIT_BUFFER(excfiles);
     INIT_BUFFER(cfiles);
+    INIT_BUFFER(ofiles);
     for (i = 1; i < argc; i++) {
         char *arg = argv[i];
         char *narg = argv[i+1];
@@ -52,6 +58,14 @@ int main(int argc, char **argv)
 
                 } else if (!strcmp(arg, "-eonly")) {
                     excOnly = 1;
+
+                } else if (!strcmp(arg, "-ec-prefix") && narg) {
+                    cPrefix = narg;
+                    i++;
+
+                } else if (!strcmp(arg, "-eo-prefix") && narg) {
+                    oPrefix = narg;
+                    i++;
 
                 } else {
                     fprintf(stderr, "Unrecognized exc flag: %s\n", arg);
@@ -93,6 +107,7 @@ int main(int argc, char **argv)
 
         }
     }
+    WRITE_ONE_BUFFER(cflags, NULL);
 
 
     /* check for inconsistencies in the options */
@@ -120,6 +135,43 @@ int main(int argc, char **argv)
     (void) spec;
 
 
+    /* handle the output names */
+    INIT_BUFFER(cfileso);
+    for (si = 0; si < cfiles.bufused; si++) {
+        char *cfile, *ofile, *ext;
+        cfile = cfiles.buf[si];
+        SF(ofile, malloc, NULL, (strlen(oPrefix) + strlen(cfile) + 1));
+        sprintf(ofile, "%s%s", oPrefix, cfile);
+        ext = strrchr(ofile, '.');
+        if (ext && !strcmp(ext, ".c"))
+            ext[1] = 'o';
+        WRITE_ONE_BUFFER(cfileso, ofile);
+        WRITE_ONE_BUFFER(ofiles, ofile);
+    }
+
+    INIT_BUFFER(excfileso);
+    for (si = 0; si < excfiles.bufused; si++) {
+        char *excfile, *cfile, *ofile, *ext;
+        excfile = excfiles.buf[si];
+
+        SF(cfile, malloc, NULL, (strlen(cPrefix) + strlen(excfile) + 1));
+        sprintf(cfile, "%s%s", cPrefix, excfile);
+        ext = strrchr(cfile, '.');
+        if (ext && !strcmp(ext, ".exc"))
+            strcpy(ext, ".c");
+        WRITE_ONE_BUFFER(excfileso, cfile);
+        WRITE_ONE_BUFFER(cfiles, cfile);
+
+        SF(ofile, malloc, NULL, (strlen(oPrefix) + strlen(excfile) + 1));
+        sprintf(ofile, "%s%s", oPrefix, excfile);
+        ext = strrchr(ofile, '.');
+        if (ext && !strcmp(ext, ".exc"))
+            strcpy(ext, ".o");
+        WRITE_ONE_BUFFER(cfileso, ofile);
+        WRITE_ONE_BUFFER(ofiles, ofile);
+    }
+
+
     /* handle all the .exc files */
     for (si = 0; si < excfiles.bufused; si++) {
         TransformState state;
@@ -132,63 +184,77 @@ int main(int argc, char **argv)
             *ext = '\0';
 
         /* handle the file */
-        state = transformFile(spec, file);
+        state = transformFile(spec, cflags.buf, file);
 
         /* unparse it */
         if (state.files.buf[0]) {
-            struct Buffer_char cfname;
             FILE *f;
             struct Buffer_char unparsed = cunparse(state.files.buf[0]);
             unparsed.bufused--;
 
-            /* get the .c file name */
-            INIT_BUFFER(cfname);
-            WRITE_BUFFER(cfname, file, strlen(file));
-            WRITE_BUFFER(cfname, ".c", 3);
-
-            /* and write it */
-            f = fopen(cfname.buf, "w");
+            /* write it */
+            f = fopen(excfileso.buf[si], "w");
             if (fwrite(unparsed.buf, 1, unparsed.bufused, f) != unparsed.bufused) {
-                perror(cfname.buf);
+                perror(excfileso.buf[si]);
                 exit(1);
             }
+            fclose(f);
             FREE_BUFFER(unparsed);
-
-            /* make sure it gets compiled (FIXME: sort of a memory leak) */
-            WRITE_ONE_BUFFER(cfiles, cfname.buf);
         }
 
         freeTransformState(&state);
     }
+    if (excOnly) return 0;
 
     /* handle all the .c files */
     for (si = 0; si < cfiles.bufused; si++) {
         struct Buffer_char ib, ob;
-        char *ofname, *ext;
+        char *ofname;
         char *repNames[] = {"if", "of", NULL};
         char *repVals[] = {NULL, NULL, NULL};
 
         /* make the output file name */
-        SF(ofname, strdup, NULL, (cfiles.buf[si]));
-        ext = strrchr(ofname, '.');
-        if (ext && !strcmp(ext, ".c")) {
-            ext[1] = 'o';
+        if (compileOnly && outFile) {
+            ofname = outFile;
         } else {
-            fprintf(stderr, "Unrecognized file extension: %s\n", ext);
-            exit(1);
+            ofname = cfileso.buf[si];
         }
 
         /* compile */
         repVals[0] = cfiles.buf[si];
         repVals[1] = ofname;
         INIT_BUFFER(ib);
-        ob = execSpec(spec->cc, repNames, repVals, ib, &tmpi);
+        ob = execSpec(spec->cc, cflags.buf, repNames, repVals, ib, &tmpi);
         FREE_BUFFER(ob);
         FREE_BUFFER(ib);
-        free(ofname);
 
         if (tmpi != 0) {
             fprintf(stderr, "Failed to compile %s\n", cfiles.buf[i]);
+            exit(1);
+        }
+    }
+    if (compileOnly) return 0;
+
+    /* and finally, link (FIXME: putting this in cflags is wrong wrong wrong) */
+    cflags.bufused--;
+    for (si = 0; si < ofiles.bufused; si++)
+        WRITE_ONE_BUFFER(cflags, ofiles.buf[si]);
+    WRITE_ONE_BUFFER(cflags, NULL);
+    if (!outFile) outFile = "a.out";
+    {
+        struct Buffer_char ib, ob;
+        char *repNames[] = {"of", NULL};
+        char *repVals[] = {NULL, NULL};
+
+        /* and link */
+        repVals[0] = outFile;
+        INIT_BUFFER(ib);
+        ob = execSpec(spec->ld, cflags.buf, repNames, repVals, ib, &tmpi);
+        FREE_BUFFER(ob);
+        FREE_BUFFER(ib);
+
+        if (tmpi != 0) {
+            fprintf(stderr, "Failed to link!\n");
             exit(1);
         }
     }

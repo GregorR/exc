@@ -20,7 +20,7 @@ typedef struct SpecCmd_ {
 } SpecCmd;
 
 typedef struct Spec_ {
-    SpecCmd *cpp, *cc;
+    SpecCmd *cpp, *cc, *ld;
 } Spec;
 
 /* load the default or specified spec file (return allocated) */
@@ -29,6 +29,7 @@ Spec *excLoadSpec(const char *bindir, const char *file);
 /* run a spec command with the given replacements */
 struct Buffer_char execSpec(
     SpecCmd *cmd,
+    char *const addlFlags[],
     char *const repNames[],
     char *const repVals[],
     struct Buffer_char input,

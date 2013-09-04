@@ -1,2 +1,3 @@
 @cpp(gcc "-E" "-undef" "-ffreestanding" "-x" c -);
 @cc(gcc "-c" "-x" c @if "-o" @of);
+@ld(gcc "-o" @of);

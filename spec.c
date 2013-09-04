@@ -76,8 +76,6 @@ static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void
             }
         }
 
-        WRITE_ONE_BUFFER(cmd->cmd, NULL);
-
         /* and stop searching */
         *then = THEN_STOP;
         return node;
@@ -161,6 +159,7 @@ Spec *excLoadSpec(const char *bindir, const char *file)
 #define LOAD(x) ret->x = readSpecCmd(node, #x)
     LOAD(cpp);
     LOAD(cc);
+    LOAD(ld);
 #undef LOAD
 
     return ret;
@@ -169,6 +168,7 @@ Spec *excLoadSpec(const char *bindir, const char *file)
 /* run a spec command with the given replacements */
 struct Buffer_char execSpec(
     SpecCmd *cmd,
+    char *const addlFlags[],
     char *const repNames[],
     char *const repVals[],
     struct Buffer_char input,
@@ -176,15 +176,23 @@ struct Buffer_char execSpec(
 {
     size_t i;
     struct Buffer_char ret;
-    char **repCmd;
+    struct Buffer_charp repCmd;
     char fin[] = "/tmp/i.XXXXXX";
     char fon[] = "/tmp/o.XXXXXX";
     FILE *fi = NULL, *fo = NULL;
     int tmpi;
 
     /* copy the command */
-    SF(repCmd, malloc, NULL, (cmd->cmd.bufused * sizeof(char *)));
-    memcpy(repCmd, cmd->cmd.buf, cmd->cmd.bufused * sizeof(char *));
+    INIT_BUFFER(repCmd);
+    for (i = 0; i < cmd->cmd.bufused; i++)
+        WRITE_ONE_BUFFER(repCmd, cmd->cmd.buf[i]);
+
+    /* and the additional flags */
+    if (addlFlags) {
+        for (i = 0; addlFlags[i]; i++)
+            WRITE_ONE_BUFFER(repCmd, addlFlags[i]);
+    }
+    WRITE_ONE_BUFFER(repCmd, NULL);
 
     /* handle input and output */
     if (cmd->i >= 0) {
@@ -194,12 +202,12 @@ struct Buffer_char execSpec(
             fprintf(stderr, "Error writing to temporary file %s!\n", fin);
             exit(1);
         }
-        repCmd[cmd->i] = fin;
+        repCmd.buf[cmd->i] = fin;
     }
     if (cmd->o >= 0) {
         SF(tmpi, mkstemp, -1, (fon));
         SF(fo, fdopen, NULL, (tmpi, "r"));
-        repCmd[cmd->o] = fon;
+        repCmd.buf[cmd->o] = fon;
     }
 
     /* perform replacements */
@@ -209,7 +217,7 @@ struct Buffer_char execSpec(
             for (w = 0; w < cmd->repPositions.bufused; w++) {
                 if (!strcmp(repNames[i],
                             cmd->cmd.buf[cmd->repPositions.buf[w]])) {
-                    repCmd[cmd->repPositions.buf[w]] = repVals[i];
+                    repCmd.buf[cmd->repPositions.buf[w]] = repVals[i];
                     break;
                 }
             }
@@ -217,7 +225,7 @@ struct Buffer_char execSpec(
     }
 
     /* execute it */
-    ret = execBuffered(repCmd, input, status);
+    ret = execBuffered(repCmd.buf, input, status);
 
     /* get out output */
     if (cmd->o >= 0) {
@@ -228,7 +236,7 @@ struct Buffer_char execSpec(
     /* get rid of our temp files */
     if (fi) fclose(fi);
     if (fo) fclose(fo);
-    free(repCmd);
+    FREE_BUFFER(repCmd);
 
     /* and return the output */
     return ret;
