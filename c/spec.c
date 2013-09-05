@@ -10,13 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */
 #define _XOPEN_SOURCE 700
-#include "stdio.h"
-
-#include "stdlib.h"
-
-#include "string.h"
-
-#include "sys/types.h"
+#include "spec.h"
 
 #include "exec.h"
 
@@ -26,11 +20,15 @@
 
 #include "scan.h"
 
-#include "spec.h"
-
 #include "transform.h"
 
 #include "unparse.h"
+
+#include "stdio.h"
+
+#include "stdlib.h"
+
+#include "string.h"
 
 static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void *arg)
 {

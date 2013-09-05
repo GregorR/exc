@@ -10,6 +10,8 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */
 #define _XOPEN_SOURCE 700
+#include "whereami.h"
+
 #include "string.h"
 
 #include "stdio.h"

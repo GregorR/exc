@@ -10,6 +10,8 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */
 #define _XOPEN_SOURCE 700
+#include "node.h"
+
 #include "stdlib.h"
 
 #include "stdio.h"
@@ -17,8 +19,6 @@
 #include "string.h"
 
 #include "helpers.h"
-
-#include "node.h"
 
 /* create a node */
  Node *newNode(Node *parent, int type, Token *tok, size_t children)

@@ -10,13 +10,13 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */
 #define _XOPEN_SOURCE 700
+#include "scan.h"
+
 #include "stdio.h"
 
 #include "stdlib.h"
 
 #include "string.h"
-
-#include "scan.h"
 
  ScanState newScanState(size_t f)
 {

@@ -10,13 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */
 #define _XOPEN_SOURCE 700
-#include "stdarg.h"
-
-#include "string.h"
-
-#include "sys/types.h"
-
-#include "unistd.h"
+#include "transform.h"
 
 #include "builtin-stages.h"
 
@@ -24,7 +18,17 @@
 
 #include "parse.h"
 
-#include "transform.h"
+#include "stdio.h"
+
+#include "stdlib.h"
+
+#include "stdarg.h"
+
+#include "string.h"
+
+#include "sys/types.h"
+
+#include "unistd.h"
 
 enum {
     MATCH_NO = 0,

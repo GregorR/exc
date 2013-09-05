@@ -10,12 +10,14 @@ SRC=\
 CSRC=$(addprefix c/,$(SRC:.exc=.c))
 OBJS=$(addprefix o/,$(SRC:.exc=.o))
 
-all: exc
-
 include deps
+
+all: exc
 
 exc: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o exc
+
+csrc: $(CSRC)
 
 c/exists:
 	mkdir -p c
