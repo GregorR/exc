@@ -1,5 +1,10 @@
 #ifndef EXC_scan
 #define EXC_scan 1
+
+
+
+
+
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -11,13 +16,27 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #include "node.h"
+
 
 #include "buffer.h"
 
+
+
+#line 24 "scan.exc"
  enum Tokens {
     TOK_FIRST = 0,
+#line 1 "tokens.h"
+
+
+
+
 TOK_KEY_FIRST,
+#line 1 "keywords.h"
+
+
+
 TOK_auto,
 TOK_break,
 TOK_case,
@@ -62,14 +81,21 @@ TOK__Imaginary,
 TOK__Noreturn,
 TOK__Static_assert,
 TOK__Thread_local,
+#line 5 "tokens.h"
+
+
+
 TOK_KEY_LAST,
+
 TOK_ID,
+
 TOK_LITERAL_FIRST,
 TOK_INT_LITERAL,
 TOK_FLOAT_LITERAL,
 TOK_CHAR_LITERAL,
 TOK_STR_LITERAL,
 TOK_LITERAL_LAST,
+
 TOK_PUNC_FIRST,
 TOK_LBRACKET,
 TOK_RBRACKET,
@@ -121,20 +147,38 @@ TOK_ASG_END,
 TOK_COMMA,
 TOK_HASH,
 TOK_HASHHASH,
+
 /* exc additions */
 TOK_DECORATION,
 TOK_OPEN_DECORATION,
 TOK_CLOSE_DECORATION,
 /* /exc additions */
+
 TOK_PUNC_UNKNOWN,
 TOK_PUNC_LAST,
+
 TOK_TERM,
+#line 31 "scan.exc"
+
+
+
+
     TOK_LAST
 };
+
+
+#line 34 "scan.exc"
  typedef struct ScanState_ {
+    struct Buffer_charp *filenames;
     struct Buffer_char buf;
     size_t idx, f, l, c;
 } ScanState;
- ScanState newScanState(size_t f);
+
+
+#line 40 "scan.exc"
+ ScanState newScanState(struct Buffer_charp *filenames);
+
+
+#line 146 "scan.exc"
  Token *cscan(ScanState *state);
 #endif

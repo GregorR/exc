@@ -36,8 +36,6 @@
 #define EXC_DEFAULT_SPEC_DIR "/../share/exc/spec/"
 #endif
 
-@public @raw(BUFFER(charp, char *););
-
 @public typedef struct SpecCmd_ {
     struct Buffer_charp cmd;
     struct Buffer_int repPositions; /* which parameters are replaceable */

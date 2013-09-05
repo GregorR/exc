@@ -53,7 +53,8 @@
 
 @public struct TransformState_ {
     struct Buffer_Transform transforms;
-    struct Buffer_charp filenames; /* memory owned by the transform state */
+    struct Buffer_charp ppfilenames; /* filenames, as seen by the preprocessor */
+    struct Buffer_charp filenames; /* filenames handled by exc */
     struct Buffer_Nodep files;
     Node *header;
 };
@@ -336,11 +337,16 @@ outer:
     size_t i;
     int tmpi;
     Node *node;
+    char *defFilename;
 
     INIT_BUFFER(state.transforms);
+    INIT_BUFFER(state.ppfilenames);
     INIT_BUFFER(state.filenames);
     INIT_BUFFER(state.files);
     state.header = NULL;
+
+    SF(defFilename, strdup, NULL, ("???"));
+    WRITE_ONE_BUFFER(state.ppfilenames, defFilename);
 
     WRITE_ONE_BUFFER(state.filenames, filename);
 
@@ -360,7 +366,6 @@ outer:
             WRITE_BUFFER(loader, filename, strlen(filename));
             WRITE_BUFFER(loader, ".exc\"\n", 6);
 
-
             source = execSpec(spec->cpp, cflags, NULL, NULL, loader, &tmpi);
 
             FREE_BUFFER(loader);
@@ -372,7 +377,7 @@ outer:
             }
 
             /* now parse it */
-            scanState = newScanState(i);
+            scanState = newScanState(&state.ppfilenames);
             scanState.buf = source;
 
             error = NULL;

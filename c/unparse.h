@@ -1,5 +1,10 @@
 #ifndef EXC_unparse
 #define EXC_unparse 1
+
+
+
+
+
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -11,7 +16,9 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #include "node.h"
+
 
 #include "stdio.h"
 
@@ -19,13 +26,30 @@
 
 #include "sys/types.h"
 
+
 #include "buffer.h"
 
+
 /* convert a token type to a name */
+
+#line 27 "unparse.exc"
  const char *tokenName(int n);
+
 /* convert a node type (numeric) to a name */
+
+#line 38 "unparse.exc"
  const char *nodeName(int n);
- struct Buffer_char cunparse(Node *node);
+
+
+#line 91 "unparse.exc"
+ struct Buffer_char cunparse(struct Buffer_charp *filenames, Node *node);
+
+
+
+#line 102 "unparse.exc"
  struct Buffer_char cunparseStrLiteral(Token *tok);
+
+
+#line 252 "unparse.exc"
  struct Buffer_char cunparseJSON(Node *node);
 #endif

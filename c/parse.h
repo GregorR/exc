@@ -1,5 +1,10 @@
 #ifndef EXC_parse
 #define EXC_parse 1
+
+
+
+
+
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -11,9 +16,11 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #include "node.h"
 
 #include "scan.h"
+
 
 #include "stdio.h"
 
@@ -21,26 +28,44 @@
 
 #include "sys/types.h"
 
+
 #include "buffer.h"
 
+#line 26 "parse.exc"
+
+
 BUFFER(Tokenp, Token *);
+
+
+#line 28 "parse.exc"
  enum Nodes {
     NODE_FIRST = 0,
+#line 2 "nodes.h"
+
+
+
+
 /* Constants/literals */
 NODE_NIL,
+
 NODE_TOK,
+
 NODE_ID,
 NODE_DECORATION_NAME,
+
 NODE_INT_LITERAL,
 NODE_FLOAT_LITERAL,
 NODE_CHAR_LITERAL,
 NODE_STR_LITERAL,
+
 /* Expressions */
 NODE_PAREN,
+
 NODE_GENERIC_SELECTION,
 NODE_GENERIC_ASSOC_LIST,
 NODE_GENERIC_ASSOCIATION,
 NODE_GENERIC_ASSOCIATION_DEFAULT,
+
 NODE_INDEX,
 NODE_CALL,
 NODE_MEMBER_DOT,
@@ -48,7 +73,9 @@ NODE_MEMBER_ARROW,
 NODE_POSTINC,
 NODE_POSTDEC,
 NODE_COMPOUND_LITERAL,
+
 NODE_ARGUMENT_EXPRESSION_LIST,
+
 NODE_PREINC,
 NODE_PREDEC,
 NODE_ADDROF,
@@ -60,29 +87,44 @@ NODE_NOT,
 NODE_SIZEOF_EXP,
 NODE_SIZEOF_TYPE,
 NODE_ALIGNOF,
+
 NODE_CAST,
+
 NODE_MUL,
 NODE_DIV,
 NODE_MOD,
+
 NODE_ADD,
 NODE_SUB,
+
 NODE_SHL,
 NODE_SHR,
+
 NODE_LT,
 NODE_GT,
 NODE_LTE,
 NODE_GTE,
+
 NODE_EQ,
 NODE_NEQ,
+
 NODE_BAND,
+
 NODE_BXOR,
+
 NODE_BOR,
+
 NODE_AND,
+
 NODE_OR,
+
 NODE_CONDITIONAL,
+
 NODE_ASG,
 NODE_RASG,
+
 NODE_COMMA,
+
 /* Declarations */
 NODE_DECLARATION,
 NODE_DECLARATION_SPECIFIERS,
@@ -122,6 +164,7 @@ NODE_DESIGNATION,
 NODE_DESIGNATOR_LIST,
 NODE_DESIGNATOR,
 NODE_STATIC_ASSERT_DECLARATION,
+
 /* Statements */
 NODE_LABELED_STATEMENT,
 NODE_CASE_STATEMENT,
@@ -139,12 +182,14 @@ NODE_GOTO_STATEMENT,
 NODE_CONTINUE_STATEMENT,
 NODE_BREAK_STATEMENT,
 NODE_RETURN_STATEMENT,
+
 /* Translation unit/top level */
 NODE_TRANSLATION_UNIT,
 NODE_FUNCTION_DEFINITION,
 NODE_DECLARATION_LIST,
 NODE_FILE,
 NODE_TERM,
+
 /* Decoration */
 NODE_DECORATION_OPEN,
 NODE_DECORATION_OPEN_CONT,
@@ -159,19 +204,19 @@ NODE_DECORATED_SPECIFIER_QUALIFIER_LIST,
 NODE_DECLARATION_DECORATOR_LIST,
 NODE_DECLARATION_DECORATOR,
 NODE_DECORATION_SUB_DECLARATION,
+#line 35 "parse.exc"
+
+
+
+
     NODE_LAST
 };
- typedef struct ParseState_ {
-    ScanState *scanState;
-    /* pushback tokens */
-    struct Buffer_Tokenp buf;
-    /* error state */
-    size_t eidx, el, ec;
-    struct Buffer_int eexpected;
-    int efound;
-} ParseState;
+
+
 /***************************************************************
  * ENTRY POINT                                                 *
  ***************************************************************/
+
+#line 2040 "parse.exc"
  Node *cparse(ScanState *state, char **error);
 #endif

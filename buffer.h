@@ -56,6 +56,7 @@ struct Buffer_ ## name { \
 }
 
 BUFFER(char, char);
+BUFFER(charp, char *);
 BUFFER(int, int);
 #endif
 

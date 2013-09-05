@@ -1,5 +1,10 @@
 #ifndef EXC_whereami
 #define EXC_whereami 1
+
+
+
+
+
 /*
  * Written in 2005, 2006, 2013 by Gregor Richards
  *
@@ -11,10 +16,13 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 /* Figure out where a binary is installed
  * argvz: argv[0]
  * dir: Where to put the directory component
  * fil: Where to put the filename component
  * returns a pointer to dir or NULL for failure */
+
+#line 50 "whereami.exc"
  char *whereAmI(const char *argvz, char **dir, char **fil);
 #endif

@@ -1,7 +1,8 @@
 CC=gcc
 EXCFLAGS=-ec-prefix c/
-CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic -I. \
- -Wno-unused-function
+#CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic -I. \
+# -Wno-unused-function
+CFLAGS=-O0 -g -I.
 
 # FIXME: These are GNU make specific :(
 SRC=\

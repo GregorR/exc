@@ -35,14 +35,14 @@
     NODE_LAST
 };
 
-@public typedef struct ParseState_ {
+typedef struct ParseState_ {
     ScanState *scanState;
 
     /* pushback tokens */
     struct Buffer_Tokenp buf;
 
     /* error state */
-    size_t eidx, el, ec;
+    size_t eidx, ef, el, ec;
     struct Buffer_int eexpected;
     int efound;
 } ParseState;
@@ -89,6 +89,7 @@ static Token *expect(ParseState *state, int type)
     /* add it to the error state */
     if (ret->idx > state->eidx) {
         state->eidx = ret->idx;
+        state->ef = ret->f;
         state->el = ret->l;
         state->ec = ret->c;
         state->eexpected.bufused = 0;
@@ -2052,12 +2053,22 @@ OPT(DecorationOpen)
     if (!ret) {
         /* failed to parse, find out why */
         struct Buffer_char ebuf;
+        char *fname;
+        size_t tmps;
+
         INIT_BUFFER(ebuf);
 
-        while (BUFFER_SPACE(ebuf) <= 29 + 2*3*sizeof(int))
+        /* get the appropriate filename */
+        if (pState.ef < state->filenames->bufused)
+            fname = state->filenames->buf[pState.ef];
+        else
+            fname = "???";
+
+        tmps = 32 + strlen(fname) + 2*4*sizeof(int);
+        while (BUFFER_SPACE(ebuf) <= tmps)
             EXPAND_BUFFER(ebuf);
         ebuf.bufused += sprintf(ebuf.buf + ebuf.bufused,
-                                "At line %d column %d\n expected: ", (int) pState.el, (int) pState.ec);
+                                "File %s line %d column %d\n expected: ", fname, (int) pState.el, (int) pState.ec);
 
         /* remove redundant expected names */
         for (i = 0; i < pState.eexpected.bufused; i++) {

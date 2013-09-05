@@ -1,3 +1,8 @@
+
+
+
+
+
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -9,6 +14,9 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+#line 13 "node.exc"
+
+
 #define _XOPEN_SOURCE 700
 #include "node.h"
 
@@ -18,9 +26,13 @@
 
 #include "string.h"
 
+
 #include "helpers.h"
 
+
 /* create a node */
+
+#line 37 "node.exc"
  Node *newNode(Node *parent, int type, Token *tok, size_t children)
 {
     Node *ret;
@@ -30,7 +42,10 @@
     ret->tok = tok;
     return ret;
 }
+
 /* free a node and all the tokens and nodes under it */
+
+#line 48 "node.exc"
  void freeNode(Node *node)
 {
     size_t i;
@@ -40,7 +55,10 @@
         freeToken(node->tok);
     free(node);
 }
+
 /* Create a token. All memory becomes owned by the token. */
+
+#line 59 "node.exc"
  Token *newToken(int type, int dup, char *pre, char *tok)
 {
     Token *ret;
@@ -48,6 +66,7 @@
     ret->type = type;
     ret->idx = ret->l = ret->c = 0;
     ret->f = -1;
+
     if (pre == NULL) {
         SF(ret->pre, strdup, NULL, (""));
     } else if (dup) {
@@ -55,6 +74,7 @@
     } else {
         ret->pre = pre;
     }
+
     if (tok == NULL) {
         SF(ret->tok, strdup, NULL, (""));
     } else if (dup) {
@@ -62,12 +82,19 @@
     } else {
         ret->tok = tok;
     }
+
     return ret;
 }
+
 /* free a token */
+
+#line 87 "node.exc"
  void freeToken(Token *tok)
 {
     free(tok->pre);
     free(tok->tok);
     free(tok);
 }
+#line 1 "<stdin>"
+
+

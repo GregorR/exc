@@ -32,19 +32,35 @@
 };
 
 @public typedef struct ScanState_ {
+    struct Buffer_charp *filenames;
     struct Buffer_char buf;
     size_t idx, f, l, c;
 } ScanState;
 
-@public ScanState newScanState(size_t f)
+@public ScanState newScanState(struct Buffer_charp *filenames)
 {
     ScanState ret;
+    ret.filenames = filenames;
     ret.buf.buf = NULL;
     ret.buf.bufused = ret.buf.bufsz = 0;
-    ret.f = f;
     ret.idx = 0;
+    ret.f = 0;
     ret.l = ret.c = 1;
     return ret;
+}
+
+static size_t getFileNo(struct Buffer_charp *buf, char *name)
+{
+    size_t i;
+    char *mname;
+
+    for (i = 0; i < buf->bufused; i++)
+        if (!strcmp(buf->buf[i], name)) return i;
+
+    /* add it */
+    SF(mname, strdup, NULL, (name));
+    WRITE_ONE_BUFFER(*buf, mname);
+    return buf->bufused - 1;
 }
 
 static int ciswhite(char c)
@@ -103,15 +119,11 @@ static char *getWhite(ScanState *state)
     size_t i = fi;
     struct Buffer_char *buf = &state->buf;
     char c = buf->buf[i];
-    int lastWasNewline = (i == 0);
 
     if (!c) return strdup("");
 
     while (ciswhite(c) ||
-           (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*')) ||
-           (lastWasNewline && c == '#')) {
-        lastWasNewline = 0;
-
+           (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*'))) {
         if (c == '/') {
             if (buf->buf[i+1] == '/') {
                 for (i+=2; buf->buf[i] && buf->buf[i] != '\n'; i++) {
@@ -121,16 +133,6 @@ static char *getWhite(ScanState *state)
                 for (i++; buf->buf[i+1] && (buf->buf[i] != '*' || buf->buf[i+1] != '/'); i++);
                 if (buf->buf[i] == '*' && buf->buf[i+1] == '/') i += 2;
             }
-
-        } else if (c == '#') {
-            /* for our purposes, #line and such are whitespace */
-            for (i++; buf->buf[i] && buf->buf[i] != '\n'; i++) {
-                if (buf->buf[i] == '\\' && buf->buf[i+1]) i++;
-            }
-
-        } else if (c == '\n') {
-            lastWasNewline = 1;
-            i++;
 
         } else i++;
 
@@ -153,10 +155,86 @@ static char *getWhite(ScanState *state)
     /* get any preceding whitespace */
     pre = getWhite(state);
 
+    if (0) {
+        char *morePre, *cPre;
+retryWhite:
+        /* need more whitespace after a preprocessor directive */
+        morePre = getWhite(state);
+        SF(cPre, malloc, NULL, (strlen(pre) + strlen(morePre) + 1));
+        sprintf(cPre, "%s%s", pre, morePre);
+        free(pre);
+        free(morePre);
+        pre = cPre;
+    }
+
     /* then get a token */
     fi = i = state->idx;
     c = buf->buf[i];
-    if (cisidnond(c)) {
+
+    if (c == '#') {
+        /* a preprocessor directive; hopefully #line */
+        if (state->idx != 0 &&
+            (!pre[0] || pre[strlen(pre)-1] != '\n')) {
+            /* nope, just take this as a token */
+            ttype = TOK_HASH;
+            i++;
+
+        } else {
+            Token *line, *file;
+
+            /* a real preprocessing directive */
+            if (!strncmp(buf->buf + i, "#line ", 6)) {
+                /* it's a #line directive */
+                i += 6;
+
+            } else if (!strncmp(buf->buf + i, "# ", 2) &&
+                       (buf->buf[i+2] >= '0' && buf->buf[i+2] <= '9')) {
+                /* it's a GNU-style #line thingy */
+                i += 2;
+
+            } else {
+                /* it's... confusing */
+                while (i < buf->bufused && buf->buf[i] != '\n') i++;
+                updateIdx(state, i);
+                goto retryWhite;
+
+            }
+
+            /* now just scan to get the vital elements */
+            updateIdx(state, i);
+            line = cscan(state);
+            file = cscan(state);
+
+            /* skip to the end of the line */
+            i = state->idx;
+            while (i < buf->bufused && buf->buf[i] != '\n') i++;
+            updateIdx(state, i);
+
+            /* and try to set our line number */
+            if (line->type == TOK_INT_LITERAL && file->type == TOK_STR_LITERAL) {
+                /* perfect! */
+                long ln;
+                char *fname;
+
+                ln = strtol(line->tok, NULL, 10);
+                if (file->tok[0] && file->tok[1]) {
+                    fname = file->tok + 1;
+                    file->tok[strlen(file->tok)-1] = '\0'; /* remove the ending " */
+                } else {
+                    /* weird filename? */
+                    fname = "???";
+                }
+
+                state->f = getFileNo(state->filenames, fname);
+                state->l = ln - 1; /* we left the \n intact */
+                state->c = 1;
+            }
+
+            /* that was basically whitespace, so retreat */
+            goto retryWhite;
+        }
+
+    } else if (cisidnond(c)) {
         /* it's an identifier or keyword */
         for (i++; cisid(buf->buf[i]); i++);
         tok = strndup(buf->buf + fi, i - fi);

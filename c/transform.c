@@ -1,3 +1,8 @@
+
+
+
+
+
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -9,6 +14,9 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+#line 13 "transform.exc"
+
+
 #define _XOPEN_SOURCE 700
 #include "transform.h"
 
@@ -30,12 +38,18 @@
 
 #include "unistd.h"
 
+#line 74 "transform.exc"
+
+
 enum {
     MATCH_NO = 0,
     MATCH_MATCH,
     MATCH_NOTIN
 };
+
 /* parenthesize a node */
+
+#line 81 "transform.exc"
  Node *trParenthesize(Node *node)
 {
     Node *ret = newNode(NULL, NODE_PAREN, newToken(TOK_LPAREN, 1, NULL, "("), 2);
@@ -44,7 +58,10 @@ enum {
     ret->children[1] = newNode(ret, NODE_TOK, newToken(TOK_RPAREN, 1, NULL, ")"), 0);
     return ret;
 }
+
 /* replace a node */
+
+#line 91 "transform.exc"
  void trReplace(Node *from, Node *to, int preserveWhitespace)
 {
     size_t i;
@@ -54,11 +71,13 @@ enum {
         if (pnode->children[i]) pnode->children[i] = to;
         to->parent = pnode;
     }
+
     if (preserveWhitespace) {
         /* attempt to preserve the whitespace by drilling down until we find
          * the leftmost tok, then taking its whitespace */
         char *keepWhitespace = "";
         Node *n = from;
+
         while (n) {
             if (n->tok) {
                 if (n->tok->pre)
@@ -67,8 +86,10 @@ enum {
             }
             n = n->children[0];
         }
+
         if (keepWhitespace[0]) {
             n = to;
+
             while (n) {
                 if (n->tok) {
                     char *nw;
@@ -87,17 +108,22 @@ enum {
         }
     }
 }
+
 /* resize a node */
+
+#line 139 "transform.exc"
  Node *trResize(Node *node, size_t to)
 {
     size_t i;
     Node *nnode = newNode(NULL, node->type, node->tok, to);
     node->tok = NULL;
+
     for (i = 0; node->children[i] && i < to; i++) {
         nnode->children[i] = node->children[i];
         nnode->children[i]->parent = nnode;
         node->children[i] = NULL;
     }
+
     /* make sure we don't lose any children */
     if (node->children[i]) {
         for (; node->children[i]; i++) {
@@ -105,58 +131,85 @@ enum {
             node->children[i] = NULL;
         }
     }
+
     /* update it in the parent */
     trReplace(node, nnode, 0);
+
     /* free the old node */
     freeNode(node);
+
     return nnode;
 }
+
 /* append nodes as children of an existing node */
+
+#line 169 "transform.exc"
  Node *trAppend(Node *parent, ...)
 {
     struct Buffer_Nodep buf;
     Node *child;
     va_list ap;
     size_t i, ni;
+
     INIT_BUFFER(buf);
+
     /* first collect all the nodes */
     va_start(ap, parent);
-    while ((child = (va_arg(ap, Node *))))
+    while ((child = (
+#line 180 "transform.exc"
+va_arg(ap, Node *))
+#line 180 "transform.exc"
+))
         WRITE_ONE_BUFFER(buf, child);
     va_end(ap);
+
     /* now resize the parent node */
     for (i = 0; parent->children[i]; i++);
     parent = trResize(parent, i + buf.bufused);
+
     /* and add the new nodes */
     for (ni = 0; ni < buf.bufused; ni++, i++) {
         parent->children[i] = buf.buf[ni];
         parent->children[i]->parent = parent;
     }
+
     FREE_BUFFER(buf);
+
     return parent;
 }
+
 /* prepend a single node to an existing node, and perhaps give it the
  * successor's whitespace */
+
+#line 201 "transform.exc"
  Node *trPrepend(Node *parent, Node *child)
 {
     size_t i, ni;
+
     /* resize the parent node */
     for (i = 0; parent->children[i]; i++);
     parent = trResize(parent, i + 1);
+
     /* move the children */
     for (ni = i; ni >= 1; ni--)
         parent->children[ni] = parent->children[ni-1];
+
     /* and add the new node */
     parent->children[0] = child;
     child->parent = parent;
+
     return parent;
 }
+
 /* duplicate a tree of nodes */
+
+#line 221 "transform.exc"
  Node *trDupNode(Node *node)
 {
     size_t i;
     Node *ret;
     Token *tok = NULL;
+
     /* first duplicate the token */
     if (node->tok) {
         tok = newToken(node->tok->type, 1, node->tok->pre, node->tok->tok);
@@ -165,31 +218,39 @@ enum {
         tok->l = node->tok->l;
         tok->c = node->tok->c;
     }
+
     /* count children */
     for (i = 0; node->children[i]; i++);
+
     /* allocate the new node */
     ret = newNode(NULL, node->type, tok, i);
+
     /* and copy children */
     for (i = 0; node->children[i]; i++) {
         Node *c = trDupNode(node->children[i]);
         c->parent = ret;
         ret->children[i] = c;
     }
+
     return ret;
 }
+
 static int match(TransformState *state, Node *node, TrFind *find)
 {
     int i;
+
     /* first try node type match */
     for (i = 0; i < 4; i++) {
         if (find->matchNode[i] == node->type) return MATCH_MATCH;
         if (find->notInNode[i] == node->type) return MATCH_NOTIN;
     }
+
     /* now if it's a decorator, try matching it */
     if (node->type == NODE_EXPRESSION_DECORATOR ||
         node->type == NODE_DECLARATION_DECORATOR) {
         /* the first child is a decoration name, check it */
         const char *dName = node->children[0]->tok->tok;
+
         for (i = 0; i < 4 &&
                     (find->matchDecoration[i] || find->notInDecoration[i]); i++) {
             if (find->matchDecoration[i] &&
@@ -198,23 +259,31 @@ static int match(TransformState *state, Node *node, TrFind *find)
                 !strcmp(find->notInDecoration[i], dName)) return MATCH_NOTIN;
         }
     }
+
     /* and maybe it'll provide functions */
     if (find->matchFunc && find->matchFunc(state, node)) return MATCH_MATCH;
     if (find->notInFunc && find->notInFunc(state, node)) return MATCH_NOTIN;
+
     return MATCH_NO;
 }
+
 /* perform the given transformation on matching nodes */
+
+#line 285 "transform.exc"
  void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg)
 {
     int then;
     size_t i;
+
     /* find a matching node */
     while (node) {
         /* first try the node itself */
         if (match(state, node, find)) {
             Node *snode;
+
             then = THEN_INNER_EXCLUSIVE;
             snode = func(state, node, &then, arg);
+
             /* and figure out what to do next */
             if (snode) {
                 node = snode;
@@ -223,11 +292,13 @@ static int match(TransformState *state, Node *node, TrFind *find)
                 else if (then == THEN_STOP) break;
             }
         }
+
         /* then children nodes */
         if (node->children[0]) {
             node = node->children[0];
             continue;
         }
+
         /* then siblings */
 outer:
         while (node) {
@@ -245,76 +316,113 @@ outer:
         }
     }
 }
+
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
+
+#line 334 "transform.exc"
  TransformState transformFile(Spec *spec, char *const cflags[], char *filename)
 {
     TransformState state;
     size_t i;
     int tmpi;
     Node *node;
+    char *defFilename;
+
     INIT_BUFFER(state.transforms);
+    INIT_BUFFER(state.ppfilenames);
     INIT_BUFFER(state.filenames);
     INIT_BUFFER(state.files);
     state.header = NULL;
+
+    SF(defFilename, strdup, NULL, ("???"));
+    WRITE_ONE_BUFFER(state.ppfilenames, defFilename);
+
     WRITE_ONE_BUFFER(state.filenames, filename);
+
     /* first stage just gets all the files input */
     for (i = 0; i < state.filenames.bufused; i++) {
         filename = state.filenames.buf[i];
+
         /* have we read, preprocessed and parsed the file? */
         if (state.files.bufused <= i) {
             /* we need to read in the file first! */
             struct Buffer_char loader, source;
             ScanState scanState;
             char *error;
+
             INIT_BUFFER(loader);
             WRITE_BUFFER(loader, "#include \"", 10);
             WRITE_BUFFER(loader, filename, strlen(filename));
             WRITE_BUFFER(loader, ".exc\"\n", 6);
+
             source = execSpec(spec->cpp, cflags, NULL, NULL, loader, &tmpi);
+
             FREE_BUFFER(loader);
             WRITE_ONE_BUFFER(source, '\0');
+
             if (tmpi != 0) {
                 fprintf(stderr, "cpp failed!\n");
                 exit(1);
             }
+
             /* now parse it */
-            scanState = newScanState(i);
+            scanState = newScanState(&state.ppfilenames);
             scanState.buf = source;
+
             error = NULL;
             node = cparse(&scanState, &error);
+
             if (!node) {
                 fprintf(stderr, "%s: %s\n", filename, error);
                 FREE_BUFFER(source);
                 continue;
             }
             FREE_BUFFER(source);
+
             WRITE_ONE_BUFFER(state.files, node);
+
         }
+
         /* run the imports */
         state.files.buf[i] = transformImportStage(&state, state.files.buf[i], (i == 0));
     }
+
     /* @extension unimplemented */
+
     /* header stage */
     for (i = 0; i < state.files.bufused; i++)
         state.files.buf[i] = transformHeaderStage(&state, state.files.buf[i], (i == 0));
+
     /* finally, the @raw stage */
     for (i = 0; i < state.files.bufused; i++)
         state.files.buf[i] = transformRawStage(&state, state.files.buf[i], (i == 0));
+
     return state;
+
 }
+
 /* free a TransformState */
+
+#line 416 "transform.exc"
  void freeTransformState(TransformState *state)
 {
     size_t i;
+
     FREE_BUFFER(state->transforms);
+
     for (i = 0; i < state->filenames.bufused; i++)
         free(state->filenames.buf[i]);
     FREE_BUFFER(state->filenames);
+
     for (i = 0; i < state->files.bufused; i++)
         if (state->files.buf[i])
             freeNode(state->files.buf[i]);
     FREE_BUFFER(state->files);
+
     if (state->header)
         freeNode(state->header);
 }
+#line 1 "<stdin>"
+
+

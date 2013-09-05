@@ -1,3 +1,8 @@
+
+
+
+
+
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -9,8 +14,12 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+#line 13 "scan.exc"
+
+
 #define _XOPEN_SOURCE 700
 #include "scan.h"
+
 
 #include "stdio.h"
 
@@ -18,16 +27,35 @@
 
 #include "string.h"
 
- ScanState newScanState(size_t f)
+
+
+#line 40 "scan.exc"
+ ScanState newScanState(struct Buffer_charp *filenames)
 {
     ScanState ret;
+    ret.filenames = filenames;
     ret.buf.buf = NULL;
     ret.buf.bufused = ret.buf.bufsz = 0;
-    ret.f = f;
     ret.idx = 0;
+    ret.f = 0;
     ret.l = ret.c = 1;
     return ret;
 }
+
+static size_t getFileNo(struct Buffer_charp *buf, char *name)
+{
+    size_t i;
+    char *mname;
+
+    for (i = 0; i < buf->bufused; i++)
+        if (!strcmp(buf->buf[i], name)) return i;
+
+    /* add it */
+    SF(mname, strdup, NULL, (name));
+    WRITE_ONE_BUFFER(*buf, mname);
+    return buf->bufused - 1;
+}
+
 static int ciswhite(char c)
 {
     return (c == ' ' ||
@@ -36,26 +64,31 @@ static int ciswhite(char c)
             c == '\v' ||
             c == '\r');
 }
+
 static int cisidnond(char c)
 {
     return ((c >= 'A' && c <= 'Z') ||
             (c >= 'a' && c <= 'z') ||
             c == '_');
 }
+
 static int cisdigit(char c)
 {
     return (c >= '0' && c <= '9');
 }
+
 static int cishexdigit(char c)
 {
     return (cisdigit(c) ||
             (c >= 'A' && c <= 'F') ||
             (c >= 'a' && c <= 'f'));
 }
+
 static int cisid(char c)
 {
     return cisidnond(c) || cisdigit(c);
 }
+
 static void updateIdx(ScanState *state, size_t ni)
 {
     size_t i;
@@ -65,24 +98,25 @@ static void updateIdx(ScanState *state, size_t ni)
                 state->l++;
                 state->c = 1;
                 break;
+
             default:
                 state->c++;
         }
     }
     state->idx = ni;
 }
+
 static char *getWhite(ScanState *state)
 {
     size_t fi = state->idx;
     size_t i = fi;
     struct Buffer_char *buf = &state->buf;
     char c = buf->buf[i];
-    int lastWasNewline = (i == 0);
+
     if (!c) return strdup("");
+
     while (ciswhite(c) ||
-           (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*')) ||
-           (lastWasNewline && c == '#')) {
-        lastWasNewline = 0;
+           (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*'))) {
         if (c == '/') {
             if (buf->buf[i+1] == '/') {
                 for (i+=2; buf->buf[i] && buf->buf[i] != '\n'; i++) {
@@ -92,20 +126,18 @@ static char *getWhite(ScanState *state)
                 for (i++; buf->buf[i+1] && (buf->buf[i] != '*' || buf->buf[i+1] != '/'); i++);
                 if (buf->buf[i] == '*' && buf->buf[i+1] == '/') i += 2;
             }
-        } else if (c == '#') {
-            /* for our purposes, #line and such are whitespace */
-            for (i++; buf->buf[i] && buf->buf[i] != '\n'; i++) {
-                if (buf->buf[i] == '\\' && buf->buf[i+1]) i++;
-            }
-        } else if (c == '\n') {
-            lastWasNewline = 1;
-            i++;
+
         } else i++;
+
         c = buf->buf[i];
     }
+
     updateIdx(state, i);
     return strndup(buf->buf + fi, i - fi);
 }
+
+
+#line 146 "scan.exc"
  Token *cscan(ScanState *state)
 {
     Token *ret = NULL;
@@ -114,17 +146,100 @@ static char *getWhite(ScanState *state)
     size_t fi, i;
     struct Buffer_char *buf = &state->buf;
     char c;
+
     /* get any preceding whitespace */
     pre = getWhite(state);
+
+    if (0) {
+        char *morePre, *cPre;
+retryWhite:
+        /* need more whitespace after a preprocessor directive */
+        morePre = getWhite(state);
+        SF(cPre, malloc, NULL, (strlen(pre) + strlen(morePre) + 1));
+        sprintf(cPre, "%s%s", pre, morePre);
+        free(pre);
+        free(morePre);
+        pre = cPre;
+    }
+
     /* then get a token */
     fi = i = state->idx;
     c = buf->buf[i];
-    if (cisidnond(c)) {
+
+    if (c == '#') {
+        /* a preprocessor directive; hopefully #line */
+        if (state->idx != 0 &&
+            (!pre[0] || pre[strlen(pre)-1] != '\n')) {
+            /* nope, just take this as a token */
+            ttype = TOK_HASH;
+            i++;
+
+        } else {
+            Token *line, *file;
+
+            /* a real preprocessing directive */
+            if (!strncmp(buf->buf + i, "#line ", 6)) {
+                /* it's a #line directive */
+                i += 6;
+
+            } else if (!strncmp(buf->buf + i, "# ", 2) &&
+                       (buf->buf[i+2] >= '0' && buf->buf[i+2] <= '9')) {
+                /* it's a GNU-style #line thingy */
+                i += 2;
+
+            } else {
+                /* it's... confusing */
+                while (i < buf->bufused && buf->buf[i] != '\n') i++;
+                updateIdx(state, i);
+                goto retryWhite;
+
+            }
+
+            /* now just scan to get the vital elements */
+            updateIdx(state, i);
+            line = cscan(state);
+            file = cscan(state);
+
+            /* skip to the end of the line */
+            i = state->idx;
+            while (i < buf->bufused && buf->buf[i] != '\n') i++;
+            updateIdx(state, i);
+
+            /* and try to set our line number */
+            if (line->type == TOK_INT_LITERAL && file->type == TOK_STR_LITERAL) {
+                /* perfect! */
+                long ln;
+                char *fname;
+
+                ln = strtol(line->tok, NULL, 10);
+                if (file->tok[0] && file->tok[1]) {
+                    fname = file->tok + 1;
+                    file->tok[strlen(file->tok)-1] = '\0'; /* remove the ending " */
+                } else {
+                    /* weird filename? */
+                    fname = "???";
+                }
+
+                state->f = getFileNo(state->filenames, fname);
+                state->l = ln - 1; /* we left the \n intact */
+                state->c = 1;
+            }
+
+            /* that was basically whitespace, so retreat */
+            goto retryWhite;
+        }
+
+    } else if (cisidnond(c)) {
         /* it's an identifier or keyword */
         for (i++; cisid(buf->buf[i]); i++);
         tok = strndup(buf->buf + fi, i - fi);
         if (!tok) goto fail;
+#line 1 "keywords.h"
+
+
         /* now check if it's a keyword */
+
+
 if (!strcmp(tok, "auto")) { ttype = TOK_auto; } else
 if (!strcmp(tok, "break")) { ttype = TOK_break; } else
 if (!strcmp(tok, "case")) { ttype = TOK_case; } else
@@ -169,10 +284,16 @@ if (!strcmp(tok, "_Imaginary")) { ttype = TOK__Imaginary; } else
 if (!strcmp(tok, "_Noreturn")) { ttype = TOK__Noreturn; } else
 if (!strcmp(tok, "_Static_assert")) { ttype = TOK__Static_assert; } else
 if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
+#line 247 "scan.exc"
+
+
+
         { ttype = TOK_ID; }
+
     } else if (cisdigit(c) || (c == '.' && cisdigit(buf->buf[i+1]))) {
         /* a number of some kind; and that can be a LOT of different kinds! */
         int ishex = 0, hasdot = 0, hasexponent = 0, hasfsuffix = 0;
+
         /* first off, what flavor of number is it? */
         if (c == '0') {
             if (buf->buf[i+1] == 'x') {
@@ -180,10 +301,12 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                 ishex = 1;
             }
         }
+
         /* hex has more digits, which makes it a bit trickier to parse */
         if (ishex) {
             /* first part */
             for (c = buf->buf[i]; c && cishexdigit(c); i++, c = buf->buf[i]);
+
             /* maybe a dot? */
             if (c == '.') {
                 /* optional fractional part */
@@ -192,6 +315,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                      c && cishexdigit(c);
                      i++, c = buf->buf[i]);
             }
+
             /* maybe a p or P (exponent part) */
             if (c == 'p' || c == 'P') {
                 hasexponent = 1;
@@ -199,11 +323,14 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                 if (c == '-' || c == '+') {
                     i++; c = buf->buf[i];
                 }
+
                 for (; c && cisdigit(c); i++, c = buf->buf[i]);
             }
+
         } else {
             /* first part */
             for (c = buf->buf[i]; c && cisdigit(c); i++, c = buf->buf[i]);
+
             /* maybe a dot? */
             if (c == '.') {
                 /* optional fractional part */
@@ -212,6 +339,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                      c && cisdigit(c);
                      i++, c = buf->buf[i]);
             }
+
             /* maybe an e or E (exponent part) */
             if (c == 'e' || c == 'E') {
                 hasexponent = 1;
@@ -219,9 +347,12 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                 if (c == '-' || c == '+') {
                     i++; c = buf->buf[i];
                 }
+
                 for (; c && cisdigit(c); c = buf->buf[i]);
             }
+
         }
+
         /* and finally, an optional suffix */
         for (;
              c &&
@@ -231,11 +362,13 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
              i++, c = buf->buf[i]) {
             if (c == 'f' || c == 'F') hasfsuffix = 1;
         }
+
         if (hasdot || hasexponent || hasfsuffix) {
             ttype = TOK_FLOAT_LITERAL;
         } else {
             ttype = TOK_INT_LITERAL;
         }
+
     } else if (c == '\'' ||
                ((c == 'L' || c == 'u' || c == 'U') && buf->buf[i+1] == '\'')) {
         /* a character literal, find the match */
@@ -247,6 +380,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
         }
         if (c == '\'') i++;
         ttype = TOK_CHAR_LITERAL;
+
     } else if (c == '"' ||
                ((c == 'u' || c == 'U' || c == 'L') && buf->buf[i+1] == '"') ||
                (c == 'u' && buf->buf[i+1] == '8' && buf->buf[i+2] == '"')) {
@@ -254,6 +388,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
         while (c != '"') {
             i++, c = buf->buf[i];
         }
+
         for (i++, c = buf->buf[i];
              c && c != '"';
              i++, c = buf->buf[i]) {
@@ -261,6 +396,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
         }
         if (c == '"') i++;
         ttype = TOK_STR_LITERAL;
+
     } else if (c) {
         /* must be a punctuator of some kind */
         char nc = buf->buf[++i];
@@ -268,21 +404,27 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
             case '[':
                 ttype = TOK_LBRACKET;
                 break;
+
             case ']':
                 ttype = TOK_RBRACKET;
                 break;
+
             case '(':
                 ttype = TOK_LPAREN;
                 break;
+
             case ')':
                 ttype = TOK_RPAREN;
                 break;
+
             case '{':
                 ttype = TOK_LBRACE;
                 break;
+
             case '}':
                 ttype = TOK_RBRACE;
                 break;
+
             case '.':
                 if (nc == '.' && buf->buf[i+1] == '.') {
                     i += 2;
@@ -291,6 +433,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_DOT;
                 }
                 break;
+
             case '-':
                 if (nc == '>') {
                     i++;
@@ -305,6 +448,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_MINUS;
                 }
                 break;
+
             case '+':
                 if (nc == '+') {
                     i++;
@@ -316,6 +460,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_PLUS;
                 }
                 break;
+
             case '&':
                 if (nc == '&') {
                     i++;
@@ -327,6 +472,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_AND;
                 }
                 break;
+
             case '*':
                 if (nc == '=') {
                     i++;
@@ -335,9 +481,11 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_STAR;
                 }
                 break;
+
             case '~':
                 ttype = TOK_BNOT;
                 break;
+
             case '!':
                 if (nc == '=') {
                     i++;
@@ -346,6 +494,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_NOT;
                 }
                 break;
+
             case '/':
                 if (nc == '=') {
                     i++;
@@ -357,6 +506,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_DIV;
                 }
                 break;
+
             case '%':
                 if (nc == '=') {
                     i++;
@@ -365,6 +515,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_MOD;
                 }
                 break;
+
             case '<':
                 if (nc == '<') {
                     i++;
@@ -381,6 +532,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_LT;
                 }
                 break;
+
             case '>':
                 if (nc == '>') {
                     i++;
@@ -397,6 +549,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_GT;
                 }
                 break;
+
             case '=':
                 if (nc == '=') {
                     i++;
@@ -405,6 +558,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_ASG;
                 }
                 break;
+
             case '^':
                 if (nc == '=') {
                     i++;
@@ -413,6 +567,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_BXOR;
                 }
                 break;
+
             case '|':
                 if (nc == '|') {
                     i++;
@@ -424,18 +579,23 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_BOR;
                 }
                 break;
+
             case '?':
                 ttype = TOK_HOOK;
                 break;
+
             case ':':
                 ttype = TOK_COLON;
                 break;
+
             case ';':
                 ttype = TOK_SEMICOLON;
                 break;
+
             case ',':
                 ttype = TOK_COMMA;
                 break;
+
             case '#':
                 if (nc == '#') {
                     i++;
@@ -444,6 +604,7 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_HASH;
                 }
                 break;
+
             case '@':
                 if (nc == '/') {
                     i++;
@@ -452,19 +613,25 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
                     ttype = TOK_DECORATION;
                 }
                 break;
+
             default:
                 ttype = TOK_PUNC_UNKNOWN;
         }
+
     }
+
     if (fi == i) {
         /* didn't progress, just add the terminator */
         ttype = TOK_TERM;
     }
+
     if (!tok)
         tok = strndup(buf->buf + fi, i - fi);
     if (!tok) goto fail;
+
     ret = calloc(sizeof(Token), 1);
     if (!ret) goto fail;
+
     ret->type = ttype;
     ret->idx = state->idx;
     ret->f = state->f;
@@ -472,11 +639,16 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
     ret->c = state->c;
     ret->pre = pre;
     ret->tok = tok;
+
     updateIdx(state, i);
     return ret;
+
 fail:
     free(pre);
     free(tok);
     free(ret);
     return NULL;
 }
+#line 1 "<stdin>"
+
+

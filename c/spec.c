@@ -1,3 +1,8 @@
+
+
+
+
+
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -9,8 +14,12 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+#line 13 "spec.exc"
+
+
 #define _XOPEN_SOURCE 700
 #include "spec.h"
+
 
 #include "exec.h"
 
@@ -24,26 +33,33 @@
 
 #include "unparse.h"
 
+
 #include "stdio.h"
 
 #include "stdlib.h"
 
 #include "string.h"
 
+#line 49 "spec.exc"
+
+
 static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void *arg)
 {
     SpecCmd **ret = (SpecCmd **) arg;
     SpecCmd *cmd;
     size_t i;
+
     /* make sure we have an open part */
     if (node->children[1] && node->children[1]->children[0]) {
         node = node->children[1]->children[0];
+
         /* allocate space */
         SF(cmd, malloc, NULL, (sizeof(SpecCmd)));
         *ret = cmd;
         INIT_BUFFER(cmd->cmd);
         INIT_BUFFER(cmd->repPositions);
         cmd->i = cmd->o = -1;
+
         /* read it in */
         for (i = 0; node->children[i]; i++) {
             Node *cnode = node->children[i];
@@ -56,8 +72,10 @@ static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void
                             node->children[i+1]->tok->tok) {
                             char *rName;
                             i++;
+
                             SF(rName, strdup, NULL, (node->children[i]->tok->tok));
                             WRITE_ONE_BUFFER(cmd->cmd, rName);
+
                             /* special case for @i and @o */
                             if (!strcmp(rName, "i")) {
                                 cmd->i = (int) cmd->cmd.bufused;
@@ -68,6 +86,7 @@ static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void
                             }
                         }
                         break;
+
                     case TOK_STR_LITERAL:
                     {
                         /* get the actual string */
@@ -75,6 +94,7 @@ static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void
                         WRITE_ONE_BUFFER(cmd->cmd, val.buf);
                         break;
                     }
+
                     default:
                     {
                         /* just accept the token itself */
@@ -85,23 +105,31 @@ static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void
                 }
             }
         }
+
         /* and stop searching */
         *then = THEN_STOP;
         return node;
     }
+
     return node;
 }
+
 /* read a spec command */
 static SpecCmd *readSpecCmd(Node *node, const char *cmd)
 {
     TrFind find;
     SpecCmd *ret = NULL;
     memset(&find, 0, sizeof(TrFind));
+
     find.matchDecoration[0] = cmd;
+
     transform(NULL, node, &find, readSpecCmdPrime, (void *) &ret);
     return ret;
 }
+
 /* load the default or specified spec file (return allocated) */
+
+#line 134 "spec.exc"
  Spec *excLoadSpec(const char *bindir, const char *file)
 {
     FILE *f = NULL;
@@ -110,19 +138,23 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
     ScanState sstate;
     Node *node;
     Spec *ret;
+
     if (file) {
         /* try to load from a direct source */
         f = fopen(file, "r");
     }
+
     if (!f) {
         if (!file)
             file = "gcc.excspec";
+
         /* load from the spec dir */
         SF(path, malloc, NULL, (strlen(bindir) + strlen("/../share/exc/spec/") + strlen(file) + 1));
         sprintf(path, "%s%s%s", bindir, "/../share/exc/spec/", file);
         f = fopen(path, "r");
         free(path);
     }
+
     if (!f) {
         /* failing that, load it direct from bindir (uninstalled) */
         SF(path, malloc, NULL, (strlen(bindir) + strlen(file) + 2));
@@ -130,16 +162,19 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
         f = fopen(path, "r");
         free(path);
     }
+
     if (!f) {
         /* failure! */
         perror(file);
         exit(1);
     }
+
     /* read it in */
     INIT_BUFFER(buf);
     READ_FILE_BUFFER(buf, f);
     WRITE_ONE_BUFFER(buf, '\0');
     fclose(f);
+
     /* parse it */
     sstate = newScanState(0);
     sstate.buf = buf;
@@ -150,14 +185,21 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
             fprintf(stderr, "Error parsing spec file: %s\n", parseError);
         exit(1);
     }
+
     /* and read in each line */
     SF(ret, malloc, NULL, (sizeof(Spec)));
+
     ret->cpp = readSpecCmd(node, "cpp");
     ret->cc = readSpecCmd(node, "cc");
     ret->ld = readSpecCmd(node, "ld");
+
+
     return ret;
 }
+
 /* run a spec command with the given replacements */
+
+#line 202 "spec.exc"
  struct Buffer_char execSpec(
     SpecCmd *cmd,
     char *const addlFlags[],
@@ -173,16 +215,19 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
     char fon[] = "/tmp/o.XXXXXX";
     FILE *fi = NULL, *fo = NULL;
     int tmpi;
+
     /* copy the command */
     INIT_BUFFER(repCmd);
     for (i = 0; i < cmd->cmd.bufused; i++)
         WRITE_ONE_BUFFER(repCmd, cmd->cmd.buf[i]);
+
     /* and the additional flags */
     if (addlFlags) {
         for (i = 0; addlFlags[i]; i++)
             WRITE_ONE_BUFFER(repCmd, addlFlags[i]);
     }
     WRITE_ONE_BUFFER(repCmd, NULL);
+
     /* handle input and output */
     if (cmd->i >= 0) {
         SF(tmpi, mkstemp, -1, (fin));
@@ -198,6 +243,7 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
         SF(fo, fdopen, NULL, (tmpi, "r"));
         repCmd.buf[cmd->o] = fon;
     }
+
     /* perform replacements */
     if (repNames && repVals) {
         for (i = 0; repNames[i]; i++) {
@@ -211,17 +257,24 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
             }
         }
     }
+
     /* execute it */
     ret = execBuffered(repCmd.buf, input, status);
+
     /* get out output */
     if (cmd->o >= 0) {
         ret.bufused = 0;
         READ_FILE_BUFFER(ret, fo);
     }
+
     /* get rid of our temp files */
     if (fi) fclose(fi);
     if (fo) fclose(fo);
     FREE_BUFFER(repCmd);
+
     /* and return the output */
     return ret;
 }
+#line 1 "<stdin>"
+
+

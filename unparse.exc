@@ -45,12 +45,38 @@
     }
 }
 
-static void unparsePrime(struct Buffer_char *buf, Node *node)
+static void unparsePrime(struct Buffer_char *buf,
+                         struct Buffer_charp *filenames,
+                         size_t *lastFile,
+                         Node *node)
 {
     size_t i;
 
     if (node->tok) {
         Token *tok = node->tok;
+
+        if (tok->f != *lastFile) {
+            /* we're in a different file, write a #line directive */
+            if (tok->f != (size_t) -1 && filenames) {
+                char *lnum;
+                SF(lnum, malloc, NULL, (4*sizeof(int) + 1));
+                sprintf(lnum, "%d", (int) tok->l);
+
+                WRITE_BUFFER(*buf, "\n#line ", 7);
+                WRITE_BUFFER(*buf, lnum, strlen(lnum));
+                free(lnum);
+                WRITE_BUFFER(*buf, " \"", 2);
+                if (tok->f < filenames->bufused) {
+                    WRITE_BUFFER(*buf, filenames->buf[tok->f], strlen(filenames->buf[tok->f]));
+                } else {
+                    WRITE_BUFFER(*buf, "???", 3);
+                }
+                WRITE_BUFFER(*buf, "\"\n", 2);
+            }
+
+            *lastFile = tok->f;
+        }
+
         if (tok->pre)
             WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
         if (tok->tok)
@@ -58,15 +84,16 @@ static void unparsePrime(struct Buffer_char *buf, Node *node)
     }
 
     for (i = 0; node->children[i]; i++) {
-        unparsePrime(buf, node->children[i]);
+        unparsePrime(buf, filenames, lastFile, node->children[i]);
     }
 }
 
-@public struct Buffer_char cunparse(Node *node)
+@public struct Buffer_char cunparse(struct Buffer_charp *filenames, Node *node)
 {
     struct Buffer_char buf;
+    size_t lastFile = -1;
     INIT_BUFFER(buf);
-    unparsePrime(&buf, node);
+    unparsePrime(&buf, filenames, &lastFile, node);
     WRITE_ONE_BUFFER(buf, '\0');
     return buf;
 }

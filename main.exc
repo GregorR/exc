@@ -218,7 +218,7 @@ int main(int argc, char **argv)
         /* unparse it */
         if (state.files.buf[0]) {
             FILE *f;
-            struct Buffer_char unparsed = cunparse(state.files.buf[0]);
+            struct Buffer_char unparsed = cunparse(&state.ppfilenames, state.files.buf[0]);
             unparsed.bufused--;
 
             /* write it */
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
         /* unparse the .h file */
         if (state.header) {
             FILE *f;
-            struct Buffer_char unparsed = cunparse(state.header);
+            struct Buffer_char unparsed = cunparse(&state.ppfilenames, state.header);
             unparsed.bufused--;
 
             /* write it */
