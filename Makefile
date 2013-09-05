@@ -10,9 +10,9 @@ SRC=\
 CSRC=$(addprefix c/,$(SRC:.exc=.c))
 OBJS=$(addprefix o/,$(SRC:.exc=.o))
 
-include deps
-
 all: exc
+
+include deps
 
 exc: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o exc
