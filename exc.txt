@@ -39,7 +39,8 @@ Builtin decorations:
     generated .h file, and potentially REMOVES the declaration/definition from
     the .c file. What precisely is added depend on what is declared or defined:
      * decorator declaration:
-        All other decorators are moved to the header.
+        If any other decorators are present, all other decorators and comments
+        are moved to the header. Otherwise, comments are copied to the header.
      * function-definition:
         A prototype for the function is added to the header.
      * declaration with init-declarator-list, no "extern" or "typedef":

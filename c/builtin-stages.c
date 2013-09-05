@@ -8,7 +8,7 @@
  * You should have received a copy of the CC0 Public Domain Dedication along
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
- */
+ */ 
 #define _XOPEN_SOURCE 700
 #include "builtin-stages.h"
 
@@ -117,11 +117,27 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
     if (ispublic) {
         Node *pnode = node->parent->parent;
         if (pnode->type == NODE_DECORATION_DECLARATION) {
-            /* easiest case */
-            repl = newNode(NULL, NODE_NIL, NULL, 0);
-            trReplace(pnode, repl, 0);
-            trAppend(state->header->children[0], pnode, NULL);
-            return repl;
+            /* check if there are other decorators */
+            size_t i, otherdecorators = 0;
+            for (i = 0; node->parent->children[i]; i++) {
+                if (node->parent->children[i]->type == NODE_DECLARATION_DECORATOR) otherdecorators++;
+            }
+            if (otherdecorators) {
+                /* easiest case */
+                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                trReplace(pnode, repl, 0);
+                trAppend(state->header->children[0], pnode, NULL);
+                return repl;
+            } else {
+                /* duplicate to the header */
+                repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
+                trReplace(pnode, repl, 1);
+                freeNode(pnode);
+                pnode = repl;
+                repl = trDupNode(pnode);
+                trAppend(state->header->children[0], repl, NULL);
+                return pnode;
+            }
         }
         if (pnode->type == NODE_DECORATED_FUNCTION_DEFINITION) {
             /* need to turn the function definition into a function declaration */
