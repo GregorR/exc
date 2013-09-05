@@ -11,13 +11,13 @@
  */
 
 @raw(#define _XOPEN_SOURCE 700 /* for strdup */);
+@include(builtin-stages.h);
+
+@public @import(parse);
+@public @import(transform);
+@import(unparse);
 
 @include(string.h);
-
-@header @include(transform.h);
-@include(builtin-stages.h);
-@include(parse.h);
-@include(unparse.h);
 
 /* @import stage */
 static Node *transformImportStageF(TransformState *state, Node *node, int *then, void *arg)

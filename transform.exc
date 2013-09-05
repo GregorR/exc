@@ -11,22 +11,23 @@
  */
 
 @raw(#define _XOPEN_SOURCE 700 /* for strdup */);
+@include(transform.h);
 
-@public @include(stdio.h);
-@public @include(stdlib.h);
+@public @import(node);
+@public @import(spec);
+@import(builtin-stages);
+@import(exec);
+@import(parse);
+
 @public @include(sys/types.h);
+@include(stdio.h);
+@include(stdlib.h);
 @include(stdarg.h);
 @include(string.h);
 @include(sys/types.h);
 @include(unistd.h);
 
 @public @include(buffer.h);
-@public @include(node.h);
-@public @include(spec.h);
-@include(builtin-stages.h);
-@include(exec.h);
-@include(parse.h);
-@include(transform.h);
 
 @public @raw(BUFFER(Nodep, Node *););
 

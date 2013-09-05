@@ -11,6 +11,7 @@
  */
 
 @raw(#define _XOPEN_SOURCE 700 /* for strdup */);
+@include(whereami.h);
 
 @include(string.h);
 @include(stdio.h);

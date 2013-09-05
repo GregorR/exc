@@ -1,6 +1,8 @@
 #ifndef EXC_spec
 #define EXC_spec 1
 
+#include "sys/types.h"
+
 #include "buffer.h"
 
 /* FIXME: Should this be at the C level or the exc level? */

@@ -11,20 +11,21 @@
  */
 
 @raw(#define _XOPEN_SOURCE 700 /* for strdup */);
+@include(spec.h);
+
+@import(exec);
+@import(node);
+@import(parse);
+@import(scan);
+@import(transform);
+@import(unparse);
 
 @include(stdio.h);
 @include(stdlib.h);
 @include(string.h);
-@include(sys/types.h);
+@public @include(sys/types.h);
 
 @public @include(buffer.h);
-@include(exec.h);
-@include(node.h);
-@include(parse.h);
-@include(scan.h);
-@include(spec.h);
-@include(transform.h);
-@include(unparse.h);
 
 /* FIXME: Should this be at the C level or the exc level? */
 #ifndef EXC_DEFAULT_SPEC_FILE

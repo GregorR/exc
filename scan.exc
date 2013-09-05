@@ -11,14 +11,15 @@
  */
 
 @raw(#define _XOPEN_SOURCE 700 /* for strndup */);
+@include(scan.h);
+
+@public @import(node);
 
 @include(stdio.h);
 @include(stdlib.h);
 @include(string.h);
 
 @public @include(buffer.h);
-@public @include(node.h);
-@include(scan.h);
 
 @public enum Tokens {
     TOK_FIRST = 0,

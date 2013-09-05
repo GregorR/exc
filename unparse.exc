@@ -10,16 +10,18 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */
 
+@include(unparse.h);
+
+@public @import(node);
+@import(scan);
+@import(parse);
+
 @public @include(stdio.h);
 @public @include(stdlib.h);
 @public @include(sys/types.h);
 @include(string.h);
 
 @public @include(buffer.h);
-@public @include(node.h);
-@include(unparse.h);
-@include(scan.h);
-@include(parse.h);
 
 /* convert a token type to a name */
 @public const char *tokenName(int n)

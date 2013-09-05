@@ -1,17 +1,13 @@
 #ifndef EXC_transform
 #define EXC_transform 1
 
-#include "stdio.h"
+#include "node.h"
 
-#include "stdlib.h"
+#include "spec.h"
 
 #include "sys/types.h"
 
 #include "buffer.h"
-
-#include "node.h"
-
-#include "spec.h"
 
 BUFFER(Nodep, Node *);
  typedef struct TransformState_ TransformState;

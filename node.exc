@@ -11,13 +11,14 @@
  */
 
 @raw(#define _XOPEN_SOURCE 700 /* for strdup */);
+@include(node.h);
 
+@public @include(sys/types.h);
 @include(stdlib.h);
 @include(stdio.h);
 @include(string.h);
 
 @include(helpers.h);
-@include(node.h);
 
 @public typedef struct Token_ {
     int type;

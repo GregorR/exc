@@ -1,6 +1,8 @@
 #ifndef EXC_node
 #define EXC_node 1
 
+#include "sys/types.h"
+
  typedef struct Token_ {
     int type;
     size_t idx, f, l, c;

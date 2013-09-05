@@ -11,15 +11,15 @@
  */
 
 @raw(#define _XOPEN_SOURCE 700 /* for fdopen */);
+@include(exec.h);
 
 @include(stdio.h);
 @include(stdlib.h);
-@include(sys/types.h);
+@public @include(sys/types.h);
 @include(sys/wait.h);
 @include(unistd.h);
 
 @public @include(buffer.h);
-@include(exec.h);
 
 /* run this command with the given input (as a buffer, non-null-terminated),
  * returning output as a buffer, again non-null-terminated */

@@ -17,10 +17,10 @@
 @include(string.h);
 @include(sys/types.h);
 
-@include(spec.h);
-@include(transform.h);
-@include(unparse.h);
-@include(whereami.h);
+@import(spec);
+@import(transform);
+@import(unparse);
+@import(whereami);
 
 int main(int argc, char **argv)
 {

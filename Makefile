@@ -28,7 +28,7 @@ o/exists:
 	mkdir -p o
 	touch o/exists
 
-o/%.o: c/%.c o/exists
+o/%.o: c/%.c o/exists $(CSRC)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

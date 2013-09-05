@@ -1,6 +1,8 @@
 #ifndef EXC_exec
 #define EXC_exec 1
 
+#include "sys/types.h"
+
 #include "buffer.h"
 
 /* run this command with the given input (as a buffer, non-null-terminated),

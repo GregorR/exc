@@ -1,9 +1,9 @@
 #ifndef EXC_scan
 #define EXC_scan 1
 
-#include "buffer.h"
-
 #include "node.h"
+
+#include "buffer.h"
 
  enum Tokens {
     TOK_FIRST = 0,

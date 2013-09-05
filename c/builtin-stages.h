@@ -1,6 +1,8 @@
 #ifndef EXC_builtin_stages
 #define EXC_builtin_stages 1
 
+#include "parse.h"
+
 #include "transform.h"
 
  Node *transformImportStage(TransformState *state, Node *node, int isprimary);

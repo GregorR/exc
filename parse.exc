@@ -10,16 +10,18 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */
 
+@include(parse.h);
+
+@public @import(node);
+@public @import(scan);
+@import(unparse);
+
 @public @include(stdio.h);
 @public @include(stdlib.h);
 @public @include(sys/types.h);
 @include(string.h);
 
 @public @include(buffer.h);
-@public @include(node.h);
-@public @include(scan.h);
-@include(parse.h);
-@include(unparse.h);
 
 @public @raw(BUFFER(Tokenp, Token *););
 
