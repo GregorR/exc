@@ -1,0 +1,8 @@
+/* tcc's preprocessor is not sufficient for our purposes, so we use mcpp
+ * instead */
+@defaults(cpp mcpp);
+@defaults(cc tcc);
+
+@cpp(@cpp "-C" "-N");
+@cc(@cc "-c" @if "-o" @of);
+@ld(@cc "-o" @of);

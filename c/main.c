@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     size_t si;
     char *bindir, *binfil;
     Spec *spec;
-    struct Buffer_charp cflags,
+    struct Buffer_charp cflags, cppflags,
         excfiles, excfileso, excfilesoh,
         cfiles, cfileso,
         ofiles;
@@ -59,6 +59,7 @@ int main(int argc, char **argv)
 
     /* first handle the arguments */
     INIT_BUFFER(cflags);
+    INIT_BUFFER(cppflags);
     INIT_BUFFER(excfiles);
     INIT_BUFFER(cfiles);
     INIT_BUFFER(ofiles);
@@ -117,6 +118,17 @@ int main(int argc, char **argv)
                 outFile = narg;
                 i++;
 
+            } else if (arg[1] == 'D' || arg[1] == 'U' || arg[1] == 'I') {
+                /* a cpp flag */
+                WRITE_ONE_BUFFER(cflags, arg);
+                WRITE_ONE_BUFFER(cppflags, arg);
+                if (!arg[2] && narg) {
+                    /* with a sub-arg */
+                    WRITE_ONE_BUFFER(cflags, narg);
+                    WRITE_ONE_BUFFER(cppflags, narg);
+                    i++;
+                }
+
             } else {
                 /* nope, send it to the C compiler */
                 WRITE_ONE_BUFFER(cflags, arg);
@@ -148,6 +160,7 @@ int main(int argc, char **argv)
         }
     }
     WRITE_ONE_BUFFER(cflags, NULL);
+    WRITE_ONE_BUFFER(cppflags, NULL);
 
 
     /* check for inconsistencies in the options */
@@ -245,7 +258,7 @@ int main(int argc, char **argv)
             *ext = '\0';
 
         /* handle the file */
-        state = transformFile(spec, cflags.buf, file);
+        state = transformFile(spec, cppflags.buf, file);
 
         /* unparse it */
         if (state.files.buf[0]) {
