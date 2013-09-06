@@ -44,6 +44,8 @@
 
 @public typedef struct Spec_ {
     SpecCmd *cpp, *cc, *ld;
+    struct Buffer_charp defaultNames;
+    struct Buffer_charp defaultVals;
 } Spec;
 
 static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void *arg)
@@ -127,7 +129,24 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
     find.matchDecoration[0] = cmd;
 
     transform(NULL, node, &find, readSpecCmdPrime, (void *) &ret);
+
+    if (ret == NULL) {
+        fprintf(stderr, "Spec does not include command for %s!\n", cmd);
+        exit(1);
+    }
+
     return ret;
+}
+
+/* free a spec command */
+static void freeSpecCmd(SpecCmd *cmd)
+{
+    size_t i;
+    for (i = 0; i < cmd->cmd.bufused; i++)
+        free(cmd->cmd.buf[i]);
+    FREE_BUFFER(cmd->cmd);
+    FREE_BUFFER(cmd->repPositions);
+    free(cmd);
 }
 
 /* load the default or specified spec file (return allocated) */
@@ -139,6 +158,8 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
     ScanState sstate;
     Node *node;
     Spec *ret;
+    SpecCmd *defaults;
+    size_t i;
 
     if (file) {
         /* try to load from a direct source */
@@ -195,12 +216,23 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
     LOAD(ld);
 #undef LOAD
 
+    /* including defaults */
+    defaults = readSpecCmd(node, "defaults");
+    INIT_BUFFER(ret->defaultNames);
+    INIT_BUFFER(ret->defaultVals);
+    for (i = 0; i < defaults->cmd.bufused - 1; i += 2) {
+        WRITE_ONE_BUFFER(ret->defaultNames, defaults->cmd.buf[i]);
+        WRITE_ONE_BUFFER(ret->defaultVals, defaults->cmd.buf[i+1]);
+        defaults->cmd.buf[i] = defaults->cmd.buf[i+1] = NULL;
+    }
+    freeSpecCmd(defaults);
+
     return ret;
 }
 
 /* run a spec command with the given replacements */
 @public struct Buffer_char execSpec(
-    SpecCmd *cmd,
+    Spec *spec, SpecCmd *cmd,
     char *const addlFlags[],
     char *const repNames[],
     char *const repVals[],
@@ -241,6 +273,17 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
         SF(tmpi, mkstemp, -1, (fon));
         SF(fo, fdopen, NULL, (tmpi, "r"));
         repCmd.buf[cmd->o] = fon;
+    }
+
+    /* perform defaults */
+    for (i = 0; i < spec->defaultNames.bufused; i++) {
+        size_t w;
+        for (w = 0; w < cmd->repPositions.bufused; w++) {
+            if (!strcmp(spec->defaultNames.buf[i],
+                        cmd->cmd.buf[cmd->repPositions.buf[w]])) {
+                repCmd.buf[cmd->repPositions.buf[w]] = spec->defaultVals.buf[i];
+            }
+        }
     }
 
     /* perform replacements */

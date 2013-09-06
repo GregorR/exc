@@ -349,7 +349,7 @@ outer:
             WRITE_BUFFER(loader, filename, strlen(filename));
             WRITE_BUFFER(loader, ".exc\"\n", 6);
 
-            source = execSpec(spec->cpp, cflags, NULL, NULL, loader, &tmpi);
+            source = execSpec(spec, spec->cpp, cflags, NULL, NULL, loader, &tmpi);
 
             FREE_BUFFER(loader);
             WRITE_ONE_BUFFER(source, '\0');

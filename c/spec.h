@@ -30,18 +30,20 @@
 #line 45 "spec.exc"
  typedef struct Spec_ {
     SpecCmd *cpp, *cc, *ld;
+    struct Buffer_charp defaultNames;
+    struct Buffer_charp defaultVals;
 } Spec;
 
 /* load the default or specified spec file (return allocated) */
 
-#line 134 "spec.exc"
+#line 153 "spec.exc"
  Spec *excLoadSpec(const char *bindir, const char *file);
 
 /* run a spec command with the given replacements */
 
-#line 202 "spec.exc"
+#line 234 "spec.exc"
  struct Buffer_char execSpec(
-    SpecCmd *cmd,
+    Spec *spec, SpecCmd *cmd,
     char *const addlFlags[],
     char *const repNames[],
     char *const repVals[],

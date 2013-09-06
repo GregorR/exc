@@ -50,6 +50,7 @@ int main(int argc, char **argv)
     char *outFile = NULL;
     char *cPrefix = "";
     char *oPrefix = "";
+    struct Buffer_charp specDefNames, specDefVals;
 
     if (!whereAmI(argv[0], &bindir, &binfil)) {
         fprintf(stderr, "Failed to find binary location, assuming .!\n");
@@ -61,6 +62,8 @@ int main(int argc, char **argv)
     INIT_BUFFER(excfiles);
     INIT_BUFFER(cfiles);
     INIT_BUFFER(ofiles);
+    INIT_BUFFER(specDefNames);
+    INIT_BUFFER(specDefVals);
     for (i = 1; i < argc; i++) {
         char *arg = argv[i];
         char *narg = argv[i+1];
@@ -93,6 +96,12 @@ int main(int argc, char **argv)
 
                 } else if (!strcmp(arg, "-eo-prefix") && narg) {
                     oPrefix = narg;
+                    i++;
+
+                } else if (!strncmp(arg, "-espec-", 7) && narg) {
+                    /* a replacement to a default spec value */
+                    WRITE_ONE_BUFFER(specDefNames, arg + 7);
+                    WRITE_ONE_BUFFER(specDefVals, narg);
                     i++;
 
                 } else {
@@ -163,7 +172,20 @@ int main(int argc, char **argv)
 
     /* load the spec */
     spec = excLoadSpec(bindir, specFile);
-    (void) spec;
+
+
+    /* override spec defaults if requested */
+    for (si = 0; si < specDefNames.bufused; si++) {
+        size_t w;
+        for (w = 0; w < spec->defaultNames.bufused; w++) {
+            if (!strcmp(specDefNames.buf[si], spec->defaultNames.buf[w])) {
+                char *val;
+                SF(val, strdup, NULL, (specDefVals.buf[si]));
+                spec->defaultVals.buf[w] = val;
+                break;
+            }
+        }
+    }
 
 
     /* handle the output names */
@@ -279,7 +301,7 @@ int main(int argc, char **argv)
         repVals[0] = cfiles.buf[si];
         repVals[1] = ofname;
         INIT_BUFFER(ib);
-        ob = execSpec(spec->cc, cflags.buf, repNames, repVals, ib, &tmpi);
+        ob = execSpec(spec, spec->cc, cflags.buf, repNames, repVals, ib, &tmpi);
         FREE_BUFFER(ob);
         FREE_BUFFER(ib);
 
@@ -304,7 +326,7 @@ int main(int argc, char **argv)
         /* and link */
         repVals[0] = outFile;
         INIT_BUFFER(ib);
-        ob = execSpec(spec->ld, cflags.buf, repNames, repVals, ib, &tmpi);
+        ob = execSpec(spec, spec->ld, cflags.buf, repNames, repVals, ib, &tmpi);
         FREE_BUFFER(ob);
         FREE_BUFFER(ib);
 

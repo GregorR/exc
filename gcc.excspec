@@ -1,3 +1,5 @@
-@cpp(gcc "-E" "-C" "-undef" "-ffreestanding" "-x" c -);
-@cc(gcc "-c" "-x" c @if "-o" @of);
-@ld(gcc "-o" @of);
+@defaults(cc gcc);
+
+@cpp(@cc "-E" "-C" "-undef" "-ffreestanding" "-x" c -);
+@cc(@cc "-c" "-x" c @if "-o" @of);
+@ld(@cc "-o" @of);
