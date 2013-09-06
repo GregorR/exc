@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -30,15 +25,11 @@
  const char *tokenName(int n)
 {
     switch (n) {
+
 #line 1 "tokens.h"
-
-
-
 case TOK_KEY_FIRST: return "KEY_FIRST";
+
 #line 1 "keywords.h"
-
-
-
 case TOK_auto: return "auto";
 case TOK_break: return "break";
 case TOK_case: return "case";
@@ -83,10 +74,8 @@ case TOK__Imaginary: return "_Imaginary";
 case TOK__Noreturn: return "_Noreturn";
 case TOK__Static_assert: return "_Static_assert";
 case TOK__Thread_local: return "_Thread_local";
+
 #line 5 "tokens.h"
-
-
-
 case TOK_KEY_LAST: return "KEY_LAST";
 
 case TOK_ID: return "ID";
@@ -160,10 +149,8 @@ case TOK_PUNC_UNKNOWN: return "PUNC_UNKNOWN";
 case TOK_PUNC_LAST: return "PUNC_LAST";
 
 case TOK_TERM: return "TERM";
+
 #line 33 "unparse.exc"
-
-
-
         default: return "???";
     }
 }
@@ -174,11 +161,9 @@ case TOK_TERM: return "TERM";
  const char *nodeName(int n)
 {
     switch (n) {
-#line 2 "nodes.h"
-
-
 
 /* Constants/literals */
+#line 2 "nodes.h"
 case NODE_NIL: return "NIL";
 
 case NODE_TOK: return "TOK";
@@ -337,10 +322,8 @@ case NODE_DECORATED_SPECIFIER_QUALIFIER_LIST: return "DECORATED_SPECIFIER_QUALIF
 case NODE_DECLARATION_DECORATOR_LIST: return "DECLARATION_DECORATOR_LIST";
 case NODE_DECLARATION_DECORATOR: return "DECLARATION_DECORATOR";
 case NODE_DECORATION_SUB_DECLARATION: return "DECORATION_SUB_DECLARATION";
+
 #line 44 "unparse.exc"
-
-
-
         default: return "???";
     }
 }
@@ -356,8 +339,14 @@ static void unparsePrime(struct Buffer_char *buf,
         Token *tok = node->tok;
 
         if (tok->f != *lastFile) {
+            /* first get out any comments that come before the final newline */
+            char *fnl;
+            fnl = tok->pre ? strrchr(tok->pre, '\n') : NULL;
+            if (fnl)
+                WRITE_BUFFER(*buf, tok->pre, fnl - tok->pre);
+
             /* we're in a different file, write a #line directive */
-            if (tok->f != (size_t) -1 && filenames) {
+            if ((tok->f != (size_t) -1) && filenames) {
                 char *lnum;
                 SF(lnum, malloc, NULL, (4*sizeof(int) + 1));
                 sprintf(lnum, "%d", (int) tok->l);
@@ -372,13 +361,23 @@ static void unparsePrime(struct Buffer_char *buf,
                     WRITE_BUFFER(*buf, "???", 3);
                 }
                 WRITE_BUFFER(*buf, "\"\n", 2);
+            } else if (fnl) {
+                WRITE_ONE_BUFFER(*buf, '\n');
             }
 
             *lastFile = tok->f;
+
+            /* now write out the remainder of the comment */
+            if (fnl) {
+                WRITE_BUFFER(*buf, fnl + 1, strlen(fnl + 1));
+            } else if (tok->pre) {
+                WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
+            }
+
+        } else if (tok->pre) {
+            WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
         }
 
-        if (tok->pre)
-            WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
         if (tok->tok)
             WRITE_BUFFER(*buf, tok->tok, strlen(tok->tok));
     }
@@ -389,7 +388,7 @@ static void unparsePrime(struct Buffer_char *buf,
 }
 
 
-#line 91 "unparse.exc"
+#line 107 "unparse.exc"
  struct Buffer_char cunparse(struct Buffer_charp *filenames, Node *node)
 {
     struct Buffer_char buf;
@@ -402,7 +401,7 @@ static void unparsePrime(struct Buffer_char *buf,
 
 
 
-#line 102 "unparse.exc"
+#line 118 "unparse.exc"
  struct Buffer_char cunparseStrLiteral(Token *tok)
 {
     struct Buffer_char buf;
@@ -554,7 +553,7 @@ static void unparseJSONPrime(struct Buffer_char *buf, Node *node)
 }
 
 
-#line 252 "unparse.exc"
+#line 268 "unparse.exc"
  struct Buffer_char cunparseJSON(Node *node)
 {
     struct Buffer_char buf;
@@ -564,5 +563,3 @@ static void unparseJSONPrime(struct Buffer_char *buf, Node *node)
     return buf;
 }
 #line 1 "<stdin>"
-
-

@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "builtin-stages.exc"
-
-
 #define _XOPEN_SOURCE 700
 #include "builtin-stages.h"
 
@@ -25,10 +19,9 @@
 
 #include "string.h"
 
-#line 23 "builtin-stages.exc"
-
 
 /* @import stage */
+#line 23 "builtin-stages.exc"
 static Node *transformImportStageF(TransformState *state, Node *node, int *then, void *arg)
 {
     struct Buffer_char fname;
@@ -141,7 +134,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 
     /* if it was @header, move the whole thing into the header */
     if (isheader) {
-        repl = newNode(NULL, NODE_NIL, NULL, 0);
+        repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
         node = node->parent->parent;
         trReplace(node, repl, 0);
         trAppend(state->header->children[0], node, NULL);
@@ -160,7 +153,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 
             if (otherdecorators) {
                 /* easiest case */
-                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 trReplace(pnode, repl, 0);
                 trAppend(state->header->children[0], pnode, NULL);
                 return repl;
@@ -242,7 +235,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 
             } else {
                 /* otherwise, just move it to the header */
-                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 trReplace(pnode, repl, 0);
                 trAppend(state->header->children[0], pnode, NULL);
                 return repl;
@@ -292,7 +285,6 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
                                          newToken(TOK_PUNC_UNKNOWN, 0, ifdef.buf, NULL), 0);
     state->header->children[1] = newNode(state->header, NODE_TOK,
                                          newToken(TOK_TERM, 1, "\n#endif\n", ""), 0);
-
     /* search for @public, @header, @private */
     memset(&find, 0, sizeof(find));
     find.matchDecoration[0] = "public";
@@ -325,7 +317,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
         /* decorator declaration or decorator expression as expression statement */
         if (ptype == NODE_DECORATION_DECLARATION) {
             node = node->parent->parent;
-            nnode = newNode(NULL, NODE_NIL, NULL, 0);
+            nnode = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
             trReplace(node, nnode, 1);
             freeNode(node);
             return nnode;
@@ -334,7 +326,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
 
         if (ptype == NODE_EXPRESSION_STATEMENT) {
             node = node->parent->parent->parent;
-            nnode = newNode(NULL, NODE_NIL, NULL, 0);
+            nnode = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
             trReplace(node, nnode, 1);
             freeNode(node);
             return nnode;
@@ -351,11 +343,11 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
             if (node->children[1] && node->children[1]->children[0]) {
                 /* we have an open, so use it */
                 repl = trParenthesize(node->children[1]->children[0]);
-                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
 
             } else {
                 /* just an empty () */
-                repl = trParenthesize(newNode(NULL, NODE_NIL, NULL, 0));
+                repl = trParenthesize(newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0));
 
             }
 
@@ -373,11 +365,11 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
             if (node->children[1] && node->children[1]->children[0]) {
                 repl = node->children[1]->children[0];
                 trReplace(node, repl, 1);
-                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 freeNode(node);
                 node = repl;
             } else {
-                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 trReplace(node, repl, 1);
                 freeNode(node);
                 node = repl;
@@ -406,12 +398,12 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
             if (node->children[1] && node->children[1]->children[0]) {
                 Node *repl = node->children[1]->children[0];
                 trReplace(pnode, repl, 1);
-                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 freeNode(pnode);
                 return repl;
 
             } else {
-                Node *repl = newNode(NULL, NODE_NIL, NULL, 0);
+                Node *repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 trReplace(pnode, repl, 1);
                 freeNode(pnode);
                 return repl;
@@ -430,11 +422,11 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
 
                 repl = node->children[1]->children[0];
                 trReplace(node, repl, 1);
-                node->children[1]->children[0] = newNode(NULL, NODE_NIL, NULL, 0);
+                node->children[1]->children[0] = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 freeNode(node);
 
             } else {
-                repl = newNode(NULL, NODE_NIL, NULL, 0);
+                repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
                 trReplace(node, repl, 1);
                 freeNode(node);
 
@@ -506,5 +498,3 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
     return node;
 }
 #line 1 "<stdin>"
-
-

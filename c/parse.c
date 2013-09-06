@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -21,9 +16,8 @@
 
 #include "string.h"
 
+
 #line 38 "parse.exc"
-
-
 typedef struct ParseState_ {
     ScanState *scanState;
 
@@ -112,11 +106,8 @@ static Node *expectN(ParseState *state, Node *parent, int type)
 }
 
 /* prepare ret with a single node `node` */
-
 /* prepare ret with nodes `node` and `node2` */
-
 /* prepare ret with token `tok` */
-
 /* shift the first child off of `ret` (usually to restore it before
  * pushNode(ret)) */
 
@@ -126,7 +117,6 @@ static Node *expectN(ParseState *state, Node *parent, int type)
 
 
 /* restore `node` from ret->children[0] and push/delete node */
-
 /* require a parser succeed, else iffail 
  * This is INTENTIONALLY not a do{}while, to allow for breaks */
 
@@ -166,7 +156,6 @@ static Node *expectN(ParseState *state, Node *parent, int type)
 
 
 /* make an optional parser based on a parser `name` */
-
 /* temporary */
 
 
@@ -238,7 +227,6 @@ static Node *parseConstant(ParseState *state, Node *parent)
 
     return NULL;
 }
-
 /***************************************************************
  * EXPRESSIONS                                                 *
  ***************************************************************/
@@ -365,7 +353,6 @@ static Node *parseUnaryExpression(ParseState *state, Node *parent)
     Token *tok;
 
     if ((ret = parsePostfixExpression(state, parent))) return ret;
-
     do { if ((tok = expect(state, TOK_PLUSPLUS))) { do { ret = newNode(parent, NODE_PREINC, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
     do { if ((tok = expect(state, TOK_MINUSMINUS))) { do { ret = newNode(parent, NODE_PREDEC, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
     do { if ((tok = expect(state, TOK_AND))) { do { ret = newNode(parent, NODE_ADDROF, tok, 1); if (!ret) { pushToken(state, tok); return NULL; } } while (0); { if (!(ret->children[0] = parseUnaryExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); break; } } }; return ret; } } while (0);;
@@ -406,7 +393,6 @@ static Node *parseCastExpression(ParseState *state, Node *parent)
     if ((ret = parseUnaryExpression(state, parent))) return ret;
     return NULL;
 }
-
 static Node *parseMultiplicativeExpression(ParseState *state, Node *parent) { Node *ret, *node, *node2; if (!(node = parseDecorationOpExpression(state, parent))) return NULL; while (1) {
     if ((node2 = expectN(state, parent, TOK_STAR))) { do { ret = newNode(parent, NODE_MUL, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseDecorationOpExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
     if ((node2 = expectN(state, parent, TOK_DIV))) { do { ret = newNode(parent, NODE_DIV, NULL, 3); if (!ret) { pushNode(state, node); pushNode(state, node2); freeNode(node); freeNode(node2); return NULL; } ret->children[0] = node; ret->children[1] = node2; node->parent = ret; node2->parent = ret; } while (0); { if (!(ret->children[2] = parseDecorationOpExpression(state, ret))) { { do { node = ret->children[0]; node->parent = parent; do { size_t sri_; for (sri_ = 0; ret->children[sri_]; sri_++) ret->children[sri_] = ret->children[sri_+1]; } while (0); pushNode(state, ret); freeNode(ret); } while (0); break; } } }; node = ret; continue; }
@@ -1953,5 +1939,3 @@ static Node *parseDecorationOpenOpt(ParseState *state, Node *parent) { Node *ret
     return ret;
 }
 #line 1 "<stdin>"
-
-

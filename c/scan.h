@@ -1,10 +1,5 @@
 #ifndef EXC_scan
 #define EXC_scan 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -27,16 +22,12 @@
 #line 24 "scan.exc"
  enum Tokens {
     TOK_FIRST = 0,
+
+
 #line 1 "tokens.h"
-
-
-
-
 TOK_KEY_FIRST,
+
 #line 1 "keywords.h"
-
-
-
 TOK_auto,
 TOK_break,
 TOK_case,
@@ -81,10 +72,8 @@ TOK__Imaginary,
 TOK__Noreturn,
 TOK__Static_assert,
 TOK__Thread_local,
+
 #line 5 "tokens.h"
-
-
-
 TOK_KEY_LAST,
 
 TOK_ID,
@@ -158,11 +147,9 @@ TOK_PUNC_UNKNOWN,
 TOK_PUNC_LAST,
 
 TOK_TERM,
+
+
 #line 31 "scan.exc"
-
-
-
-
     TOK_LAST
 };
 

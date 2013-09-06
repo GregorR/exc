@@ -1,10 +1,5 @@
 #ifndef EXC_spec
 #define EXC_spec 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -23,7 +18,6 @@
 
 
 /* FIXME: Should this be at the C level or the exc level? */
-
 
 #line 39 "spec.exc"
  typedef struct SpecCmd_ {

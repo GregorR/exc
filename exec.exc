@@ -39,7 +39,7 @@
     SF(tmpi, pipe, -1, (pipeo));
 
     /* FIXME: the command should be in a spec file! */
-    SF(pid, fork, -1, @raw());
+    @raw(SF(pid, fork, -1, ()));
     if (pid == 0) {
         SF(tmpi, close, -1, (pipei[1]));
         SF(tmpi, close, -1, (pipeo[0]));

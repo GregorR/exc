@@ -1,10 +1,5 @@
 #ifndef EXC_exec
 #define EXC_exec 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *

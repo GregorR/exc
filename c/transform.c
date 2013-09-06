@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "transform.exc"
-
-
 #define _XOPEN_SOURCE 700
 #include "transform.h"
 
@@ -38,9 +32,8 @@
 
 #include "unistd.h"
 
+
 #line 74 "transform.exc"
-
-
 enum {
     MATCH_NO = 0,
     MATCH_MATCH,
@@ -424,5 +417,3 @@ outer:
         freeNode(state->header);
 }
 #line 1 "<stdin>"
-
-

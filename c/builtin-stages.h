@@ -1,10 +1,5 @@
 #ifndef EXC_builtin_stages
 #define EXC_builtin_stages 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *

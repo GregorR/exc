@@ -1,10 +1,5 @@
 #ifndef EXC_node
 #define EXC_node 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *

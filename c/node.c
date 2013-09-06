@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "node.exc"
-
-
 #define _XOPEN_SOURCE 700
 #include "node.h"
 
@@ -96,5 +90,3 @@
     free(tok);
 }
 #line 1 "<stdin>"
-
-

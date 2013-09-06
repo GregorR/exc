@@ -1,10 +1,5 @@
 #ifndef EXC_parse
 #define EXC_parse 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -31,21 +26,18 @@
 
 #include "buffer.h"
 
+
 #line 26 "parse.exc"
-
-
 BUFFER(Tokenp, Token *);
 
 
 #line 28 "parse.exc"
  enum Nodes {
     NODE_FIRST = 0,
-#line 2 "nodes.h"
-
-
 
 
 /* Constants/literals */
+#line 2 "nodes.h"
 NODE_NIL,
 
 NODE_TOK,
@@ -204,11 +196,9 @@ NODE_DECORATED_SPECIFIER_QUALIFIER_LIST,
 NODE_DECLARATION_DECORATOR_LIST,
 NODE_DECLARATION_DECORATOR,
 NODE_DECORATION_SUB_DECLARATION,
+
+
 #line 35 "parse.exc"
-
-
-
-
     NODE_LAST
 };
 

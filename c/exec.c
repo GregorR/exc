@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "exec.exc"
-
-
 #define _XOPEN_SOURCE 700
 #include "exec.h"
 
@@ -50,9 +44,7 @@
     SF(tmpi, pipe, -1, (pipeo));
 
     /* FIXME: the command should be in a spec file! */
-    SF(pid, fork, -1, ()
-#line 42 "exec.exc"
-);
+    SF(pid, fork, -1, ())
     if (pid == 0) {
         SF(tmpi, close, -1, (pipei[1]));
         SF(tmpi, close, -1, (pipeo[0]));
@@ -87,5 +79,3 @@
     return ret;
 }
 #line 1 "<stdin>"
-
-

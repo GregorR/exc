@@ -1,10 +1,5 @@
 #ifndef EXC_transform
 #define EXC_transform 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -27,9 +22,8 @@
 
 #include "buffer.h"
 
+
 #line 32 "transform.exc"
-
-
 BUFFER(Nodep, Node *);
 
 

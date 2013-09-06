@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2005, 2006, 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "whereami.exc"
-
-
 #define _XOPEN_SOURCE 700
 #include "whereami.h"
 
@@ -33,13 +27,12 @@
 
 #include "unistd.h"
 
-#line 27 "whereami.exc"
-
 
 /* Separate a full path into a directory and file component (internal)
  * full: Full path
  * dir: Where to put the dir component
  * fil: Where to put the file component */
+#line 27 "whereami.exc"
 static void dirAndFil(const char *full, char **dir, char **fil)
 {
     *dir = strdup(full);
@@ -73,13 +66,11 @@ static void dirAndFil(const char *full, char **dir, char **fil)
     struct stat sbuf;
     char *argvzd = strdup(argvz);
     if (!argvzd) { perror("strdup"); exit(1); }
-
     /* 1: full path, yippee! */
     if (argvzd[0] == '/') {
         dirAndFil(argvzd, dir, fil);
         return argvzd;
     }
-
     /* 2: relative path */
     if (strchr(argvzd, '/')) {
         workd = (char *) malloc(1024 * sizeof(char));
@@ -149,5 +140,3 @@ static void dirAndFil(const char *full, char **dir, char **fil)
     return NULL;
 }
 #line 1 "<stdin>"
-
-

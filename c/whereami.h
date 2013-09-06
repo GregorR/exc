@@ -1,10 +1,5 @@
 #ifndef EXC_whereami
 #define EXC_whereami 1
-
-
-
-
-
 /*
  * Written in 2005, 2006, 2013 by Gregor Richards
  *

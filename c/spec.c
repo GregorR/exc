@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "spec.exc"
-
-
 #define _XOPEN_SOURCE 700
 #include "spec.h"
 
@@ -40,9 +34,8 @@
 
 #include "string.h"
 
+
 #line 49 "spec.exc"
-
-
 static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void *arg)
 {
     SpecCmd **ret = (SpecCmd **) arg;
@@ -276,5 +269,3 @@ static SpecCmd *readSpecCmd(Node *node, const char *cmd)
     return ret;
 }
 #line 1 "<stdin>"
-
-

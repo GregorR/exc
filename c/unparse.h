@@ -1,10 +1,5 @@
 #ifndef EXC_unparse
 #define EXC_unparse 1
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -41,15 +36,15 @@
  const char *nodeName(int n);
 
 
-#line 91 "unparse.exc"
+#line 107 "unparse.exc"
  struct Buffer_char cunparse(struct Buffer_charp *filenames, Node *node);
 
 
 
-#line 102 "unparse.exc"
+#line 118 "unparse.exc"
  struct Buffer_char cunparseStrLiteral(Token *tok);
 
 
-#line 252 "unparse.exc"
+#line 268 "unparse.exc"
  struct Buffer_char cunparseJSON(Node *node);
 #endif

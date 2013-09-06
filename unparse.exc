@@ -56,8 +56,14 @@ static void unparsePrime(struct Buffer_char *buf,
         Token *tok = node->tok;
 
         if (tok->f != *lastFile) {
+            /* first get out any comments that come before the final newline */
+            char *fnl;
+            fnl = tok->pre ? strrchr(tok->pre, '\n') : NULL;
+            if (fnl)
+                WRITE_BUFFER(*buf, tok->pre, fnl - tok->pre);
+
             /* we're in a different file, write a #line directive */
-            if (tok->f != (size_t) -1 && filenames) {
+            if ((tok->f != (size_t) -1) && filenames) {
                 char *lnum;
                 SF(lnum, malloc, NULL, (4*sizeof(int) + 1));
                 sprintf(lnum, "%d", (int) tok->l);
@@ -72,13 +78,23 @@ static void unparsePrime(struct Buffer_char *buf,
                     WRITE_BUFFER(*buf, "???", 3);
                 }
                 WRITE_BUFFER(*buf, "\"\n", 2);
+            } else if (fnl) {
+                WRITE_ONE_BUFFER(*buf, '\n');
             }
 
             *lastFile = tok->f;
+
+            /* now write out the remainder of the comment */
+            if (fnl) {
+                WRITE_BUFFER(*buf, fnl + 1, strlen(fnl + 1));
+            } else if (tok->pre) {
+                WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
+            }
+
+        } else if (tok->pre) {
+            WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
         }
 
-        if (tok->pre)
-            WRITE_BUFFER(*buf, tok->pre, strlen(tok->pre));
         if (tok->tok)
             WRITE_BUFFER(*buf, tok->tok, strlen(tok->tok));
     }

@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "main.exc"
-
-
 #define _XOPEN_SOURCE 700
 
 #include "stdio.h"
@@ -36,9 +30,8 @@
 
 #include "whereami.h"
 
+
 #line 25 "main.exc"
-
-
 int main(int argc, char **argv)
 {
     int i, tmpi;
@@ -324,5 +317,3 @@ int main(int argc, char **argv)
     return 0;
 }
 #line 1 "<stdin>"
-
-

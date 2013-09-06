@@ -1,8 +1,3 @@
-
-
-
-
-
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -14,9 +9,8 @@
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
+
 #line 13 "scan.exc"
-
-
 #define _XOPEN_SOURCE 700
 #include "scan.h"
 
@@ -146,9 +140,13 @@ static char *getWhite(ScanState *state)
     size_t fi, i;
     struct Buffer_char *buf = &state->buf;
     char c;
+    int firstChar;
 
     /* get any preceding whitespace */
     pre = getWhite(state);
+
+    /* preprocessing cares if this is the first character in the file */
+    firstChar = (state->idx == 0);
 
     if (0) {
         char *morePre, *cPre;
@@ -168,7 +166,7 @@ retryWhite:
 
     if (c == '#') {
         /* a preprocessor directive; hopefully #line */
-        if (state->idx != 0 &&
+        if (!firstChar &&
             (!pre[0] || pre[strlen(pre)-1] != '\n')) {
             /* nope, just take this as a token */
             ttype = TOK_HASH;
@@ -203,6 +201,7 @@ retryWhite:
             /* skip to the end of the line */
             i = state->idx;
             while (i < buf->bufused && buf->buf[i] != '\n') i++;
+            if (buf->buf[i] == '\n') i++;
             updateIdx(state, i);
 
             /* and try to set our line number */
@@ -221,9 +220,11 @@ retryWhite:
                 }
 
                 state->f = getFileNo(state->filenames, fname);
-                state->l = ln - 1; /* we left the \n intact */
+                state->l = ln;
                 state->c = 1;
             }
+            freeToken(line);
+            freeToken(file);
 
             /* that was basically whitespace, so retreat */
             goto retryWhite;
@@ -234,12 +235,10 @@ retryWhite:
         for (i++; cisid(buf->buf[i]); i++);
         tok = strndup(buf->buf + fi, i - fi);
         if (!tok) goto fail;
-#line 1 "keywords.h"
-
 
         /* now check if it's a keyword */
 
-
+#line 1 "keywords.h"
 if (!strcmp(tok, "auto")) { ttype = TOK_auto; } else
 if (!strcmp(tok, "break")) { ttype = TOK_break; } else
 if (!strcmp(tok, "case")) { ttype = TOK_case; } else
@@ -284,10 +283,8 @@ if (!strcmp(tok, "_Imaginary")) { ttype = TOK__Imaginary; } else
 if (!strcmp(tok, "_Noreturn")) { ttype = TOK__Noreturn; } else
 if (!strcmp(tok, "_Static_assert")) { ttype = TOK__Static_assert; } else
 if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
-#line 247 "scan.exc"
 
-
-
+#line 254 "scan.exc"
         { ttype = TOK_ID; }
 
     } else if (cisdigit(c) || (c == '.' && cisdigit(buf->buf[i+1]))) {
@@ -650,5 +647,3 @@ fail:
     return NULL;
 }
 #line 1 "<stdin>"
-
-

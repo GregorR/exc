@@ -151,9 +151,13 @@ static char *getWhite(ScanState *state)
     size_t fi, i;
     struct Buffer_char *buf = &state->buf;
     char c;
+    int firstChar;
 
     /* get any preceding whitespace */
     pre = getWhite(state);
+
+    /* preprocessing cares if this is the first character in the file */
+    firstChar = (state->idx == 0);
 
     if (0) {
         char *morePre, *cPre;
@@ -173,7 +177,7 @@ retryWhite:
 
     if (c == '#') {
         /* a preprocessor directive; hopefully #line */
-        if (state->idx != 0 &&
+        if (!firstChar &&
             (!pre[0] || pre[strlen(pre)-1] != '\n')) {
             /* nope, just take this as a token */
             ttype = TOK_HASH;
@@ -208,6 +212,7 @@ retryWhite:
             /* skip to the end of the line */
             i = state->idx;
             while (i < buf->bufused && buf->buf[i] != '\n') i++;
+            if (buf->buf[i] == '\n') i++;
             updateIdx(state, i);
 
             /* and try to set our line number */
@@ -226,9 +231,11 @@ retryWhite:
                 }
 
                 state->f = getFileNo(state->filenames, fname);
-                state->l = ln - 1; /* we left the \n intact */
+                state->l = ln;
                 state->c = 1;
             }
+            freeToken(line);
+            freeToken(file);
 
             /* that was basically whitespace, so retreat */
             goto retryWhite;
