@@ -1,0 +1,5 @@
+@defaults(cc pcc);
+
+@cpp(@cc "-E" "-C" "-x" c -);
+@cc(@cc "-c" "-x" c @if "-o" @of);
+@ld(@cc "-o" @of);
