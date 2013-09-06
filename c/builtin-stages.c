@@ -35,19 +35,13 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then,
     /* get the filename */
     if (node->children[1]->type != NODE_NIL) {
         fname = cunparse(NULL, node->children[1]->children[0]);
-        if (!fname.buf) return node;
     } else {
-        fname.buf = strdup("");
-        if (!fname.buf) return node;
+        SF(fname.buf, strdup, NULL, (""));
     }
 
     /* swap the @import for a @include */
     free(node->children[0]->tok->tok);
-    node->children[0]->tok->tok = strdup("include");
-    if (!node->children[0]->tok->tok) {
-        FREE_BUFFER(fname);
-        return node;
-    }
+    SF(node->children[0]->tok->tok, strdup, NULL, ("include"));
 
     if (node->children[1]->type != NODE_NIL) {
         trAppend(node->children[1]->children[0],
@@ -76,7 +70,7 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then,
 }
 
 
-#line 76 "builtin-stages.exc"
+#line 70 "builtin-stages.exc"
  Node *transformImportStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -91,7 +85,7 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then,
 
 /* @extension stage */
 
-#line 89 "builtin-stages.exc"
+#line 83 "builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
 {
     return node;
@@ -249,7 +243,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 }
 
 
-#line 245 "builtin-stages.exc"
+#line 239 "builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -477,7 +471,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
 }
 
 
-#line 479 "builtin-stages.exc"
+#line 473 "builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;

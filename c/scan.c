@@ -106,8 +106,12 @@ static char *getWhite(ScanState *state)
     size_t i = fi;
     struct Buffer_char *buf = &state->buf;
     char c = buf->buf[i];
+    char *ret;
 
-    if (!c) return strdup("");
+    if (!c) {
+        SF(ret, strdup, NULL, (""));
+        return ret;
+    }
 
     while (ciswhite(c) ||
            (c == '/' && (buf->buf[i+1] == '/' || buf->buf[i+1] == '*'))) {
@@ -127,11 +131,12 @@ static char *getWhite(ScanState *state)
     }
 
     updateIdx(state, i);
-    return strndup(buf->buf + fi, i - fi);
+    SF(ret, strndup, NULL, (buf->buf + fi, i - fi));
+    return ret;
 }
 
 
-#line 146 "scan.exc"
+#line 151 "scan.exc"
  Token *cscan(ScanState *state)
 {
     Token *ret = NULL;
@@ -233,8 +238,7 @@ retryWhite:
     } else if (cisidnond(c)) {
         /* it's an identifier or keyword */
         for (i++; cisid(buf->buf[i]); i++);
-        tok = strndup(buf->buf + fi, i - fi);
-        if (!tok) goto fail;
+        SF(tok, strndup, NULL, (buf->buf + fi, i - fi));
 
         /* now check if it's a keyword */
 
@@ -284,7 +288,7 @@ if (!strcmp(tok, "_Noreturn")) { ttype = TOK__Noreturn; } else
 if (!strcmp(tok, "_Static_assert")) { ttype = TOK__Static_assert; } else
 if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
 
-#line 254 "scan.exc"
+#line 258 "scan.exc"
         { ttype = TOK_ID; }
 
     } else if (cisdigit(c) || (c == '.' && cisdigit(buf->buf[i+1]))) {
@@ -623,11 +627,9 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
     }
 
     if (!tok)
-        tok = strndup(buf->buf + fi, i - fi);
-    if (!tok) goto fail;
+        SF(tok, strndup, NULL, (buf->buf + fi, i - fi));
 
-    ret = calloc(sizeof(Token), 1);
-    if (!ret) goto fail;
+    SF(ret, calloc, NULL, (sizeof(Token), 1));
 
     ret->type = ttype;
     ret->idx = state->idx;
@@ -639,11 +641,5 @@ if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
 
     updateIdx(state, i);
     return ret;
-
-fail:
-    free(pre);
-    free(tok);
-    free(ret);
-    return NULL;
 }
 #line 1 "<stdin>"

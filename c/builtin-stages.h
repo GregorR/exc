@@ -18,19 +18,19 @@
 
 
 
-#line 76 "builtin-stages.exc"
+#line 70 "builtin-stages.exc"
  Node *transformImportStage(TransformState *state, Node *node, int isprimary);
 
 /* @extension stage */
 
-#line 89 "builtin-stages.exc"
+#line 83 "builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary);
 
 
-#line 245 "builtin-stages.exc"
+#line 239 "builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary);
 
 
-#line 479 "builtin-stages.exc"
+#line 473 "builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary);
 #endif
