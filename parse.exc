@@ -223,78 +223,6 @@ PARSER(name ## Opt) \
     return newNode(parent, NODE_NIL, NULL, 0); \
 }
 
-/* temporary */
-#define FAKEPARSER(name) \
-static Node *parse ## name(ParseState *state, Node *parent) { return NULL; }
-
-/***************************************************************
- * IDENTIFIERS/CONSTANTS                                       *
- ***************************************************************/
-PARSER(DecorationName)
-{
-    Node *ret;
-    Token *tok;
-
-    tok = scan(state);
-    switch (tok->type) {
-        case TOK_LPAREN:
-        case TOK_RPAREN:
-        case TOK_LBRACKET:
-        case TOK_RBRACKET:
-        case TOK_LBRACE:
-        case TOK_RBRACE:
-        case TOK_DECORATION:
-        case TOK_OPEN_DECORATION:
-        case TOK_CLOSE_DECORATION:
-        case TOK_TERM:
-            /* these tokens are NOT acceptable as decoration names */
-            pushToken(state, tok);
-            break;
-
-        default:
-            MKRETT(NODE_DECORATION_NAME, 0);
-            return ret;
-    }
-
-    return NULL;
-}
-
-PARSER(Identifier)
-{
-    Node *ret = expectN(state, parent, TOK_ID);
-    if (!ret) return NULL;
-    ret->type = NODE_ID;
-    return ret;
-}
-OPT(Identifier)
-
-PARSER(Constant)
-{
-    Node *ret;
-
-    if ((ret = expectN(state, parent, TOK_INT_LITERAL))) {
-        ret->type = NODE_INT_LITERAL;
-        return ret;
-    }
-
-    if ((ret = expectN(state, parent, TOK_FLOAT_LITERAL))) {
-        ret->type = NODE_FLOAT_LITERAL;
-        return ret;
-    }
-
-    if ((ret = expectN(state, parent, TOK_CHAR_LITERAL))) {
-        ret->type = NODE_CHAR_LITERAL;
-        return ret;
-    }
-
-    if ((ret = expectN(state, parent, TOK_STR_LITERAL))) {
-        ret->type = NODE_STR_LITERAL;
-        return ret;
-    }
-
-    return NULL;
-}
-
 #define PARSER_LIST(parserName) \
 PARSER(parserName) { return parse ## parserName ## L(state, parent, 1); } \
 PARSER(parserName ## Opt) { return parse ## parserName ## L(state, parent, 0); }
@@ -373,6 +301,78 @@ static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1
     return ret; \
 } \
 PARSER_LIST(parserName)
+
+/***************************************************************
+ * IDENTIFIERS/CONSTANTS                                       *
+ ***************************************************************/
+PARSER(DecorationName)
+{
+    Node *ret;
+    Token *tok;
+
+    tok = scan(state);
+    switch (tok->type) {
+        case TOK_LPAREN:
+        case TOK_RPAREN:
+        case TOK_LBRACKET:
+        case TOK_RBRACKET:
+        case TOK_LBRACE:
+        case TOK_RBRACE:
+        case TOK_DECORATION:
+        case TOK_OPEN_DECORATION:
+        case TOK_CLOSE_DECORATION:
+        case TOK_TERM:
+            /* these tokens are NOT acceptable as decoration names */
+            pushToken(state, tok);
+            break;
+
+        default:
+            MKRETT(NODE_DECORATION_NAME, 0);
+            return ret;
+    }
+
+    return NULL;
+}
+
+PARSER(Identifier)
+{
+    Node *ret = expectN(state, parent, TOK_ID);
+    if (!ret) return NULL;
+    ret->type = NODE_ID;
+    return ret;
+}
+OPT(Identifier)
+
+PARSER(StrLiteralPart)
+{
+    return expectN(state, parent, TOK_STR_LITERAL);
+}
+
+CONCAT_LIST(StrLiteral, NODE_STR_LITERAL, StrLiteralPart)
+
+PARSER(Constant)
+{
+    Node *ret;
+
+    if ((ret = expectN(state, parent, TOK_INT_LITERAL))) {
+        ret->type = NODE_INT_LITERAL;
+        return ret;
+    }
+
+    if ((ret = expectN(state, parent, TOK_FLOAT_LITERAL))) {
+        ret->type = NODE_FLOAT_LITERAL;
+        return ret;
+    }
+
+    if ((ret = expectN(state, parent, TOK_CHAR_LITERAL))) {
+        ret->type = NODE_CHAR_LITERAL;
+        return ret;
+    }
+
+    if ((ret = parseStrLiteral(state, parent))) return ret;
+
+    return NULL;
+}
 
 
 /***************************************************************
@@ -764,7 +764,7 @@ PARSER(StaticAssertDeclaration)
     REQUIRET(0, TOK_LPAREN);
     REQUIREP(1, ConditionalExpression);
     REQUIRET(2, TOK_COMMA);
-    REQUIRET(3, TOK_STR_LITERAL);
+    REQUIREP(3, StrLiteral);
     REQUIRET(4, TOK_RPAREN);
     REQUIRET(5, TOK_SEMICOLON);
 

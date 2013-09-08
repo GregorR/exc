@@ -156,10 +156,6 @@ static Node *expectN(ParseState *state, Node *parent, int type)
 
 
 /* make an optional parser based on a parser `name` */
-/* temporary */
-
-
-
 /***************************************************************
  * IDENTIFIERS/CONSTANTS                                       *
  ***************************************************************/
@@ -201,6 +197,13 @@ static Node *parseIdentifier(ParseState *state, Node *parent)
 }
 static Node *parseIdentifierOpt(ParseState *state, Node *parent) { Node *ret; if ((ret = parseIdentifier(state, parent))) return ret; return newNode(parent, NODE_NIL, NULL, 0); }
 
+static Node *parseStrLiteralPart(ParseState *state, Node *parent)
+{
+    return expectN(state, parent, TOK_STR_LITERAL);
+}
+
+static Node *parseStrLiteralL(ParseState *state, Node *parent, int need1) { Node *ret, *node; struct Buffer_Nodep buf; size_t i; INIT_BUFFER(buf); while ((node = parseStrLiteralPart(state, parent))) { WRITE_ONE_BUFFER(buf, node); } if (need1 && buf.bufused == 0) { FREE_BUFFER(buf); return NULL; } ret = newNode(parent, NODE_STR_LITERAL, NULL, buf.bufused); for (i = 0; i < buf.bufused; i++) { ret->children[i] = buf.buf[i]; buf.buf[i]->parent = ret; } FREE_BUFFER(buf); return ret; } static Node *parseStrLiteral(ParseState *state, Node *parent) { return parseStrLiteralL(state, parent, 1); } static Node *parseStrLiteralOpt(ParseState *state, Node *parent) { return parseStrLiteralL(state, parent, 0); }
+
 static Node *parseConstant(ParseState *state, Node *parent)
 {
     Node *ret;
@@ -220,13 +223,12 @@ static Node *parseConstant(ParseState *state, Node *parent)
         return ret;
     }
 
-    if ((ret = expectN(state, parent, TOK_STR_LITERAL))) {
-        ret->type = NODE_STR_LITERAL;
-        return ret;
-    }
+    if ((ret = parseStrLiteral(state, parent))) return ret;
 
     return NULL;
 }
+
+
 /***************************************************************
  * EXPRESSIONS                                                 *
  ***************************************************************/
@@ -588,7 +590,7 @@ static Node *parseStaticAssertDeclaration(ParseState *state, Node *parent)
     { if (!(ret->children[0] = expectN(state, ret, TOK_LPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     { if (!(ret->children[1] = parseConditionalExpression(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     { if (!(ret->children[2] = expectN(state, ret, TOK_COMMA))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
-    { if (!(ret->children[3] = expectN(state, ret, TOK_STR_LITERAL))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
+    { if (!(ret->children[3] = parseStrLiteral(state, ret))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     { if (!(ret->children[4] = expectN(state, ret, TOK_RPAREN))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
     { if (!(ret->children[5] = expectN(state, ret, TOK_SEMICOLON))) { { pushNode(state, ret); freeNode(ret); return NULL; } } };
 
