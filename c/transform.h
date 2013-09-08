@@ -39,9 +39,12 @@ BUFFER(Nodep, Node *);
 #line 37 "transform.exc"
  typedef Node *(*transform_stage_func_t)(TransformState *, Node *, int isprimary);
 
+#line 38 "transform.exc"
+ typedef transform_stage_func_t *(*transform_loader_func_t)(TransformState *);
+
 /* "then" options */
 
-#line 40 "transform.exc"
+#line 41 "transform.exc"
  enum {
     THEN_INNER_INCLUSIVE, /* then check the node and all its children */
     THEN_INNER_EXCLUSIVE, /* then check the node's children (but not the node itself) */
@@ -51,7 +54,7 @@ BUFFER(Nodep, Node *);
 
 /* transforms themselves */
 
-#line 48 "transform.exc"
+#line 49 "transform.exc"
  typedef struct Transform_ {
     const char *name;
     transform_stage_func_t func;
@@ -59,8 +62,9 @@ BUFFER(Nodep, Node *);
 BUFFER(Transform, Transform);
 
 
-#line 54 "transform.exc"
+#line 55 "transform.exc"
  struct TransformState_ {
+    const char *bindir;
     struct Buffer_Transform transforms;
     struct Buffer_charp ppfilenames; /* filenames, as seen by the preprocessor */
     struct Buffer_charp filenames; /* filenames handled by exc */
@@ -71,7 +75,7 @@ BUFFER(Transform, Transform);
 /* a find request */
 
 
-#line 64 "transform.exc"
+#line 66 "transform.exc"
  typedef struct TrFind_ {
     int matchNode[4];
     const char *matchDecoration[4];
@@ -84,48 +88,48 @@ BUFFER(Transform, Transform);
 
 /* parenthesize a node */
 
-#line 81 "transform.exc"
+#line 83 "transform.exc"
  Node *trParenthesize(Node *node);
 
 /* replace a node */
 
-#line 91 "transform.exc"
+#line 93 "transform.exc"
  void trReplace(Node *from, Node *to, int preserveWhitespace);
 
 /* resize a node */
 
-#line 139 "transform.exc"
+#line 141 "transform.exc"
  Node *trResize(Node *node, size_t to);
 
 /* append nodes as children of an existing node */
 
-#line 169 "transform.exc"
+#line 171 "transform.exc"
  Node *trAppend(Node *parent, ...);
 
 /* prepend a single node to an existing node, and perhaps give it the
  * successor's whitespace */
 
-#line 201 "transform.exc"
+#line 203 "transform.exc"
  Node *trPrepend(Node *parent, Node *child);
 
 /* duplicate a tree of nodes */
 
-#line 221 "transform.exc"
+#line 223 "transform.exc"
  Node *trDupNode(Node *node);
 
 /* perform the given transformation on matching nodes */
 
-#line 285 "transform.exc"
+#line 287 "transform.exc"
  void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg);
 
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
 
-#line 334 "transform.exc"
- TransformState transformFile(Spec *spec, char *const cflags[], char *filename);
+#line 336 "transform.exc"
+ TransformState transformFile(const char *bindir, Spec *spec, char *const cflags[], char *filename);
 
 /* free a TransformState */
 
-#line 416 "transform.exc"
+#line 419 "transform.exc"
  void freeTransformState(TransformState *state);
 #endif

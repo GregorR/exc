@@ -17,10 +17,11 @@
 #include "unparse.h"
 
 
+#include "dlfcn.h"
+
 #include "string.h"
 
 
-/* @import stage */
 #line 23 "builtin-stages.exc"
 static Node *transformImportStageF(TransformState *state, Node *node, int *then, void *arg)
 {
@@ -69,8 +70,9 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then,
     return node;
 }
 
+/* @import stage */
 
-#line 70 "builtin-stages.exc"
+#line 71 "builtin-stages.exc"
  Node *transformImportStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -83,15 +85,98 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then,
     return node;
 }
 
+static void *tryLoadLibrary(const char *bindir, const char *name)
+{
+    char *lib;
+    void *dlib;
+
+    /* first try bindir/../lib/exc */
+    SF(lib, malloc, NULL, (strlen(bindir) + strlen(name) + 20));
+    sprintf(lib, "%s/../lib/exc/exc-%s.so", bindir, name);
+    dlib = dlopen(lib, RTLD_NOW|RTLD_LOCAL);
+    if (dlib) {
+        free(lib);
+        return dlib;
+    }
+
+    /* then try bindir */
+    sprintf(lib, "%s/exc-%s.so", bindir, name);
+    dlib = dlopen(lib, RTLD_NOW|RTLD_LOCAL);
+    free(lib);
+    return dlib;
+}
+
+static Node *transformExtensionStageF(TransformState *state, Node *node, int *then, void *bindirvp)
+{
+    char *bindir = (char *) bindirvp;
+    struct Buffer_char name;
+    Node *repl;
+    size_t i;
+    Transform trans;
+    void *lib;
+    transform_loader_func_t loader;
+
+    /* must be a decorator declaration, and must have an open */
+    if (!(node->parent && node->parent->parent && node->parent->parent->type == NODE_DECORATION_DECLARATION &&
+          node->children[1] && node->children[1]->children[0]))
+        return node;
+
+    /* the open is the name */
+    name = cunparse(NULL, node->children[1]->children[0]);
+
+    /* get rid of this node */
+    repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 1, "", ""), 0);
+    trReplace(node->parent->parent, repl, 1);
+
+    /* check if it's already loaded */
+    for (i = 0; i < state->transforms.bufused; i++) {
+        if (!strcmp(state->transforms.buf[i].name, name.buf)) {
+            /* already loaded this, nothing to do! */
+            FREE_BUFFER(name);
+            return repl;
+        }
+    }
+
+    /* OK, we haven't loaded it, so do so */
+    trans.name = name.buf;
+
+    /* try to load the library */
+    SF(lib, tryLoadLibrary, NULL, (bindir, trans.name));
+    if (!lib) {
+        fprintf(stderr, "%s: %s\n", trans.name, dlerror());
+        abort();
+    }
+
+    /* now get the loader function */
+    loader = (transform_loader_func_t) (size_t) dlsym(lib, "exctension");
+    if (!loader) {
+        fprintf(stderr, "%s: %s\n", trans.name, dlerror());
+        abort();
+    }
+
+    /* and finally, load the actual stage function */
+    trans.func = (transform_stage_func_t) (size_t) loader(state);
+
+    WRITE_ONE_BUFFER(state->transforms, trans);
+
+    return repl;
+}
+
 /* @extension stage */
 
-#line 83 "builtin-stages.exc"
+#line 161 "builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
 {
+    TrFind find;
+
+    /* search for @extension */
+    memset(&find, 0, sizeof(find));
+    find.matchDecoration[0] = "extension";
+    transform(state, node, &find, transformExtensionStageF, (void *) state->bindir);
+
     return node;
 }
 
-/* header stage */
 Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *arg)
 {
     int ispublic = 0, isheader = 0, isprivate = 0;
@@ -242,8 +327,9 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
     return node;
 }
 
+/* header stage */
 
-#line 239 "builtin-stages.exc"
+#line 324 "builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -289,7 +375,6 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
     return node;
 }
 
-/* @raw stage */
 static Node *transformRawStageF(TransformState *state, Node *node, int *then, void *arg)
 {
     Node *nnode;
@@ -470,8 +555,9 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
     return node;
 }
 
+/* @raw stage */
 
-#line 473 "builtin-stages.exc"
+#line 558 "builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;

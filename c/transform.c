@@ -33,7 +33,7 @@
 #include "unistd.h"
 
 
-#line 74 "transform.exc"
+#line 76 "transform.exc"
 enum {
     MATCH_NO = 0,
     MATCH_MATCH,
@@ -42,7 +42,7 @@ enum {
 
 /* parenthesize a node */
 
-#line 81 "transform.exc"
+#line 83 "transform.exc"
  Node *trParenthesize(Node *node)
 {
     Node *ret = newNode(NULL, NODE_PAREN, newToken(TOK_LPAREN, 1, NULL, "("), 2);
@@ -54,7 +54,7 @@ enum {
 
 /* replace a node */
 
-#line 91 "transform.exc"
+#line 93 "transform.exc"
  void trReplace(Node *from, Node *to, int preserveWhitespace)
 {
     size_t i;
@@ -104,7 +104,7 @@ enum {
 
 /* resize a node */
 
-#line 139 "transform.exc"
+#line 141 "transform.exc"
  Node *trResize(Node *node, size_t to)
 {
     size_t i;
@@ -136,7 +136,7 @@ enum {
 
 /* append nodes as children of an existing node */
 
-#line 169 "transform.exc"
+#line 171 "transform.exc"
  Node *trAppend(Node *parent, ...)
 {
     struct Buffer_Nodep buf;
@@ -149,9 +149,9 @@ enum {
     /* first collect all the nodes */
     va_start(ap, parent);
     while ((child = (
-#line 180 "transform.exc"
+#line 182 "transform.exc"
 va_arg(ap, Node *))
-#line 180 "transform.exc"
+#line 182 "transform.exc"
 ))
         WRITE_ONE_BUFFER(buf, child);
     va_end(ap);
@@ -174,7 +174,7 @@ va_arg(ap, Node *))
 /* prepend a single node to an existing node, and perhaps give it the
  * successor's whitespace */
 
-#line 201 "transform.exc"
+#line 203 "transform.exc"
  Node *trPrepend(Node *parent, Node *child)
 {
     size_t i, ni;
@@ -196,7 +196,7 @@ va_arg(ap, Node *))
 
 /* duplicate a tree of nodes */
 
-#line 221 "transform.exc"
+#line 223 "transform.exc"
  Node *trDupNode(Node *node)
 {
     size_t i;
@@ -262,7 +262,7 @@ static int match(TransformState *state, Node *node, TrFind *find)
 
 /* perform the given transformation on matching nodes */
 
-#line 285 "transform.exc"
+#line 287 "transform.exc"
  void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg)
 {
     int then;
@@ -313,8 +313,8 @@ outer:
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
 
-#line 334 "transform.exc"
- TransformState transformFile(Spec *spec, char *const cflags[], char *filename)
+#line 336 "transform.exc"
+ TransformState transformFile(const char *bindir, Spec *spec, char *const cflags[], char *filename)
 {
     TransformState state;
     size_t i;
@@ -322,6 +322,7 @@ outer:
     Node *node;
     char *defFilename;
 
+    state.bindir = bindir;
     INIT_BUFFER(state.transforms);
     INIT_BUFFER(state.ppfilenames);
     INIT_BUFFER(state.filenames);
@@ -397,7 +398,7 @@ outer:
 
 /* free a TransformState */
 
-#line 416 "transform.exc"
+#line 419 "transform.exc"
  void freeTransformState(TransformState *state)
 {
     size_t i;

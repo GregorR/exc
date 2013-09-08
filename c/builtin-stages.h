@@ -17,20 +17,23 @@
 #include "transform.h"
 
 
+/* @import stage */
 
-#line 70 "builtin-stages.exc"
+#line 71 "builtin-stages.exc"
  Node *transformImportStage(TransformState *state, Node *node, int isprimary);
 
 /* @extension stage */
 
-#line 83 "builtin-stages.exc"
+#line 161 "builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary);
 
+/* header stage */
 
-#line 239 "builtin-stages.exc"
+#line 324 "builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary);
 
+/* @raw stage */
 
-#line 473 "builtin-stages.exc"
+#line 558 "builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary);
 #endif

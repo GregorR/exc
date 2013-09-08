@@ -248,7 +248,7 @@ int main(int argc, char **argv)
             *ext = '\0';
 
         /* handle the file */
-        state = transformFile(spec, cppflags.buf, file);
+        state = transformFile(bindir, spec, cppflags.buf, file);
 
         /* unparse it */
         if (state.files.buf[0]) {
