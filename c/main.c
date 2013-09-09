@@ -229,7 +229,7 @@ int main(int argc, char **argv)
         WRITE_ONE_BUFFER(excfileso, cfile);
         WRITE_ONE_BUFFER(cfiles, cfile);
 
-        SF(hfile, malloc, NULL, (strlen(cPrefix + strlen(excfile) + 1)));
+        SF(hfile, malloc, NULL, (strlen(cPrefix) + strlen(excfile) + 1));
         sprintf(hfile, "%s%s", cPrefix, excfile);
         ext = strrchr(hfile, '.');
         if (ext && !strcmp(ext, ".exc"))
