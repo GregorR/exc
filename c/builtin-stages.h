@@ -34,6 +34,6 @@
 
 /* @raw stage */
 
-#line 558 "builtin-stages.exc"
+#line 601 "builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary);
 #endif

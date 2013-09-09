@@ -233,7 +233,7 @@ static int match(TransformState *state, Node *node, TrFind *find)
     int i;
 
     /* first try node type match */
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < TR_FIND_MATCH_CT; i++) {
         if (find->matchNode[i] == node->type) return MATCH_MATCH;
         if (find->notInNode[i] == node->type) return MATCH_NOTIN;
     }
@@ -244,7 +244,7 @@ static int match(TransformState *state, Node *node, TrFind *find)
         /* the first child is a decoration name, check it */
         const char *dName = node->children[0]->tok->tok;
 
-        for (i = 0; i < 4 &&
+        for (i = 0; i < TR_FIND_MATCH_CT &&
                     (find->matchDecoration[i] || find->notInDecoration[i]); i++) {
             if (find->matchDecoration[i] &&
                 !strcmp(find->matchDecoration[i], dName)) return MATCH_MATCH;

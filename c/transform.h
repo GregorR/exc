@@ -73,16 +73,16 @@ BUFFER(Transform, Transform);
 };
 
 /* a find request */
-
+#define TR_FIND_MATCH_CT 8
 
 #line 66 "transform.exc"
  typedef struct TrFind_ {
-    int matchNode[4];
-    const char *matchDecoration[4];
+    int matchNode[TR_FIND_MATCH_CT];
+    const char *matchDecoration[TR_FIND_MATCH_CT];
     transform_condition_func_t matchFunc;
 
-    int notInNode[4];
-    const char *notInDecoration[4];
+    int notInNode[TR_FIND_MATCH_CT];
+    const char *notInDecoration[TR_FIND_MATCH_CT];
     transform_condition_func_t notInFunc;
 } TrFind;
 

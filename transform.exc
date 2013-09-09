@@ -62,7 +62,7 @@
 };
 
 /* a find request */
-#define TR_FIND_MATCH_CT 4
+@public @raw(#define TR_FIND_MATCH_CT 8);
 @public typedef struct TrFind_ {
     int matchNode[TR_FIND_MATCH_CT];
     const char *matchDecoration[TR_FIND_MATCH_CT];

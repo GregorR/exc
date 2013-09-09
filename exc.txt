@@ -6,7 +6,7 @@ Builtin decoration stages:
 (2) extension stage: Reads @extension decorators and loads extension modules.
 [...] extension modules are run
 (+3) header stage: @public, @header, @private handled.
-(+4) raw stage: @rem, @raw and @include decorators replaced.
+(+4) raw stage: @rem, @raw, @pif/@pelif/@pelse and @include decorators replaced.
 
 
 Builtin decorations:
@@ -23,6 +23,19 @@ Builtin decorations:
     operator decoration, the expression and both subexpressions are surrounded
     by parentheses. In the case of a decorator declaration, the terminating
     semicolon is omitted.
+
+@pif(...){...}
+    decorator declaration
+    Preprocessor #if directive. #if (open part), then the contained
+    declarations, then #endif unless followed by @pelif or @pelse.
+
+@pelif(...){...}
+    immediately following @pif or @pelif
+    Preprocessor #elif directive.
+
+@pelse{...}
+    immediately following @pif or @pelif
+    Preprocessor #else directive.
 
 @include(...);
     decorator declaration

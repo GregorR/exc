@@ -515,6 +515,49 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
 
         }
 
+    } else if (!strcmp(type, "pif") || !strcmp(type, "pelif") || !strcmp(type, "pelse")) {
+        /* must be a decoration declaration */
+        if (ptype == NODE_DECORATION_DECLARATION) {
+            struct Buffer_char ifline, ifcond;
+            Node *repl;
+
+            /* if this is actually the @if, replace the ; with #endif */
+            if (!strcmp(type, "pif")) {
+                Node *old;
+                old = node->parent->parent->children[1];
+                repl = newNode(NULL, NODE_TOK, newToken(TOK_PUNC_UNKNOWN, 1, "\n#endif\n", ""), 0);
+                trReplace(old, repl, 1);
+                freeNode(old);
+            }
+
+            /* now make the ifline */
+            INIT_BUFFER(ifline);
+            WRITE_BUFFER(ifline, "\n#", 2);
+            WRITE_BUFFER(ifline, type + 1, strlen(type) - 1);
+
+            /* get the condition */
+            if (node->children[1] && node->children[1]->children[0]) {
+                ifcond = cunparse(NULL, node->children[1]->children[0]);
+                WRITE_ONE_BUFFER(ifline, ' ');
+                WRITE_BUFFER(ifline, ifcond.buf, ifcond.bufused - 1);
+                FREE_BUFFER(ifcond);
+            }
+            WRITE_BUFFER(ifline, "\n", 2);
+
+            /* make our replacement */
+            repl = newNode(NULL, NODE_TOK, newToken(TOK_PUNC_UNKNOWN, 0, ifline.buf, NULL), 1);
+            if (node->children[2] && node->children[2]->children[0]) {
+                /* give it the declarations part */
+                repl->children[0] = node->children[2]->children[0];
+                repl->children[0]->parent = repl;
+                node->children[2]->children[0] = NULL;
+            }
+            trReplace(node, repl, 1);
+            freeNode(node);
+
+            return repl;
+        }
+
     } else if (!strcmp(type, "include")) {
         /* must be a decoration declaration */
         if (ptype == NODE_DECORATION_DECLARATION) {
@@ -557,7 +600,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
 
 /* @raw stage */
 
-#line 558 "builtin-stages.exc"
+#line 601 "builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -568,7 +611,10 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
     memset(&find, 0, sizeof(find));
     find.matchDecoration[0] = "rem";
     find.matchDecoration[1] = "raw";
-    find.matchDecoration[2] = "include";
+    find.matchDecoration[2] = "pif";
+    find.matchDecoration[3] = "pelif";
+    find.matchDecoration[4] = "pelse";
+    find.matchDecoration[5] = "include";
     transform(state, node, &find, transformRawStageF, NULL);
 
     /* and for the raw stage, handle the header as well */
