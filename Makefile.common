@@ -1,13 +1,17 @@
-CC=gcc
+CROSS=
+CC=$(CROSS)gcc
+HOST_CC=gcc
 EXCFLAGS=-ec-prefix c/
-CFLAGS=-O0 -g -fPIC -Wall -Werror -ansi -pedantic -I. \
+CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic -I. \
  -Wno-unused-function
 LIBS=-ldl
-SHARED=-shared
+
+MLIBTOOL=$(ROOT_DIR)/mlibtool
+LIBTOOL=$(MLIBTOOL) $(CROSS)libtool
 
 # FIXME: These are GNU make specific :(
 CSRC=$(addprefix c/,$(SRC:.exc=.c))
-OBJS=$(addprefix o/,$(SRC:.exc=.o))
+OBJS=$(addprefix o/,$(SRC:.exc=.lo))
 
 csrc: $(CSRC)
 
@@ -22,5 +26,11 @@ o/exists:
 	mkdir -p o
 	touch o/exists
 
-o/%.o: c/%.c o/exists $(CSRC)
+o/%.lo: c/%.c o/exists $(MLIBTOOL)
+	$(LIBTOOL) --mode=compile $(CC) -shared $(CFLAGS) -c $< -o $@
+
+o/%.o: c/%.c o/exists
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(MLIBTOOL):
+	$(HOST_CC) -O $(ROOT_DIR)/mlibtool.c -o $(ROOT_DIR)/mlibtool
