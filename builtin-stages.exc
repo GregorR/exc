@@ -94,8 +94,8 @@ static void *tryLoadLibrary(const char *bindir, const char *name)
         return dlib;
     }
 
-    /* then try bindir */
-    sprintf(lib, "%s/exc-%s.so", bindir, name);
+    /* then try bindir/.libs, for uninstalled extensions */
+    sprintf(lib, "%s/.libs/exc-%s.so", bindir, name);
     dlib = dlopen(lib, RTLD_NOW|RTLD_LOCAL);
     free(lib);
     return dlib;

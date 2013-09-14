@@ -1,5 +1,4 @@
 ROOT_DIR=.
-EXC=./exc
 
 SRC=\
 	builtin-stages.exc exec.exc node.exc parse.exc scan.exc spec.exc \
@@ -11,13 +10,10 @@ include deps
 include Makefile.common
 
 libexc.la: $(OBJS) $(MLIBTOOL)
-	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) -rpath /usr/lib $(OBJS) -o $@ $(LIBS)
+	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) -rpath $(LIB_PREFIX) $(OBJS) -o $@ $(LIBS)
 
 exc: o/main.o libexc.la $(MLIBTOOL)
 	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) o/main.o -o exc libexc.la
-
-jlibtool: jlibtool.c
-	$(CC) $(CFLAGS) $< -o $@
 
 clean:
 	rm -rf .libs o/.libs

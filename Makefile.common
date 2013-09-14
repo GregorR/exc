@@ -1,8 +1,15 @@
+EXC=$(ROOT_DIR)/exc
+
+PREFIX=/usr
+LIB_PREFIX=$(PREFIX)/lib
+EXT_PREFIX=$(LIB_PREFIX)/exc
+
 CROSS=
 CC=$(CROSS)gcc
 HOST_CC=gcc
+
 EXCFLAGS=-ec-prefix c/
-CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic -I. \
+CFLAGS=-O0 -g -Wall -Werror -ansi -pedantic -I. -I$(ROOT_DIR) -I$(ROOT_DIR)/c \
  -Wno-unused-function
 LIBS=-ldl
 

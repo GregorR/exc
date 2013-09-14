@@ -169,8 +169,8 @@ static void freeSpecCmd(SpecCmd *cmd)
 
     if (!f) {
         /* failing that, load it direct from bindir (uninstalled) */
-        SF(path, malloc, NULL, (strlen(bindir) + strlen(file) + 2));
-        sprintf(path, "%s/%s", bindir, file);
+        SF(path, malloc, NULL, (strlen(bindir) + strlen(file) + 5));
+        sprintf(path, "%s/../%s", bindir, file);
         f = fopen(path, "r");
         free(path);
     }
