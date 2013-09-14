@@ -17,7 +17,7 @@ exc: o/main.o libexc.la $(MLIBTOOL)
 
 clean:
 	rm -rf .libs o/.libs
-	rm -f exc o/*.lo o/*.o o/exists deps
+	rm -f exc libexc.la o/*.lo o/*.o o/exists deps
 	rm -f mlibtool
 	-rmdir o
 
