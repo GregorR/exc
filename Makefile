@@ -21,5 +21,5 @@ clean:
 	rm -f mlibtool
 	-rmdir o
 
-deps: c/*.c c/*.h *.h
-	-$(CC) -I. -MM -MP c/*.c > deps
+deps: c/*.c c/*.h src/*.h
+	-$(CC) -Isrc -MM -MP c/*.c > deps

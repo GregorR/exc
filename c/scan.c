@@ -242,7 +242,7 @@ retryWhite:
 
         /* now check if it's a keyword */
 
-#line 1 "./keywords.h"
+#line 1 "src/keywords.h"
 if (!strcmp(tok, "auto")) { ttype = TOK_auto; } else
 if (!strcmp(tok, "break")) { ttype = TOK_break; } else
 if (!strcmp(tok, "case")) { ttype = TOK_case; } else

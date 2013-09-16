@@ -24,10 +24,10 @@
     TOK_FIRST = 0,
 
 
-#line 1 "./tokens.h"
+#line 1 "src/tokens.h"
 TOK_KEY_FIRST,
 
-#line 1 "./keywords.h"
+#line 1 "src/keywords.h"
 TOK_auto,
 TOK_break,
 TOK_case,
@@ -73,7 +73,7 @@ TOK__Noreturn,
 TOK__Static_assert,
 TOK__Thread_local,
 
-#line 5 "./tokens.h"
+#line 5 "src/tokens.h"
 TOK_KEY_LAST,
 
 TOK_ID,

@@ -26,10 +26,10 @@
 {
     switch (n) {
 
-#line 1 "./tokens.h"
+#line 1 "src/tokens.h"
 case TOK_KEY_FIRST: return "KEY_FIRST";
 
-#line 1 "./keywords.h"
+#line 1 "src/keywords.h"
 case TOK_auto: return "auto";
 case TOK_break: return "break";
 case TOK_case: return "case";
@@ -75,7 +75,7 @@ case TOK__Noreturn: return "_Noreturn";
 case TOK__Static_assert: return "_Static_assert";
 case TOK__Thread_local: return "_Thread_local";
 
-#line 5 "./tokens.h"
+#line 5 "src/tokens.h"
 case TOK_KEY_LAST: return "KEY_LAST";
 
 case TOK_ID: return "ID";
@@ -163,7 +163,7 @@ case TOK_TERM: return "TERM";
     switch (n) {
 
 /* Constants/literals */
-#line 2 "./nodes.h"
+#line 2 "src/nodes.h"
 case NODE_NIL: return "NIL";
 
 case NODE_TOK: return "TOK";

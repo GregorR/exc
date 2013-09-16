@@ -37,7 +37,7 @@ BUFFER(Tokenp, Token *);
 
 
 /* Constants/literals */
-#line 2 "./nodes.h"
+#line 2 "src/nodes.h"
 NODE_NIL,
 
 NODE_TOK,
