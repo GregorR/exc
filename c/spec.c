@@ -35,7 +35,7 @@
 #include "string.h"
 
 
-#line 51 "src/spec.exc"
+#line 55 "src/spec.exc"
 static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void *arg)
 {
     SpecCmd **ret = (SpecCmd **) arg;
@@ -139,7 +139,7 @@ static void freeSpecCmd(SpecCmd *cmd)
 
 /* load the default or specified spec file (return allocated) */
 
-#line 153 "src/spec.exc"
+#line 157 "src/spec.exc"
  Spec *excLoadSpec(const char *bindir, const char *file)
 {
     FILE *f = NULL;
@@ -169,8 +169,8 @@ static void freeSpecCmd(SpecCmd *cmd)
 
     if (!f) {
         /* failing that, load it direct from bindir (uninstalled) */
-        SF(path, malloc, NULL, (strlen(bindir) + strlen(file) + 5));
-        sprintf(path, "%s/../%s", bindir, file);
+        SF(path, malloc, NULL, (strlen(bindir) + strlen("/../spec/") + strlen(file) + 1));
+        sprintf(path, "%s%s%s", bindir, "/../spec/", file);
         f = fopen(path, "r");
         free(path);
     }
@@ -222,7 +222,7 @@ static void freeSpecCmd(SpecCmd *cmd)
 
 /* run a spec command with the given replacements */
 
-#line 234 "src/spec.exc"
+#line 238 "src/spec.exc"
  struct Buffer_char execSpec(
     Spec *spec, SpecCmd *cmd,
     char *const addlFlags[],

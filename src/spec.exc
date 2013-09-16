@@ -36,6 +36,10 @@
 #define EXC_DEFAULT_SPEC_DIR "/../share/exc/spec/"
 #endif
 
+#ifndef EXC_INTREE_SPEC_DIR
+#define EXC_INTREE_SPEC_DIR "/../spec/"
+#endif
+
 @public typedef struct SpecCmd_ {
     struct Buffer_charp cmd;
     struct Buffer_int repPositions; /* which parameters are replaceable */
@@ -179,8 +183,8 @@ static void freeSpecCmd(SpecCmd *cmd)
 
     if (!f) {
         /* failing that, load it direct from bindir (uninstalled) */
-        SF(path, malloc, NULL, (strlen(bindir) + strlen(file) + 5));
-        sprintf(path, "%s/../%s", bindir, file);
+        SF(path, malloc, NULL, (strlen(bindir) + strlen(EXC_INTREE_SPEC_DIR) + strlen(file) + 1));
+        sprintf(path, "%s%s%s", bindir, EXC_INTREE_SPEC_DIR, file);
         f = fopen(path, "r");
         free(path);
     }
