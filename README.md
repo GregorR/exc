@@ -22,8 +22,8 @@ flawlessly[2]. The purpose of exc is not to replace C, only to extend it.
 
 [2] exc is preprocessed, like C, but because preprocessing includes all
     #included headers, the result is usually not portable. To add the *option*
-    of generating portable C code, the built-in decoration @include is
-    supported. Using @include is obviously a change from conventional C code,
+    of generating portable C code, the built-in decoration `@include` is
+    supported. Using `@include` is obviously a change from conventional C code,
     but it's strictly optional: exc code which uses traditional #include for
     system headers works fine and is itself portable, it simply generates
     unportable C code in the compilation process.
