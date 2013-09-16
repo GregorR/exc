@@ -10,7 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
 
-#line 13 "builtin-stages.exc"
+#line 13 "src/builtin-stages.exc"
 #define _XOPEN_SOURCE 700
 #include "builtin-stages.h"
 
@@ -22,7 +22,7 @@
 #include "string.h"
 
 
-#line 23 "builtin-stages.exc"
+#line 23 "src/builtin-stages.exc"
 static Node *transformImportStageF(TransformState *state, Node *node, int *then, void *arg)
 {
     struct Buffer_char fname;
@@ -72,7 +72,7 @@ static Node *transformImportStageF(TransformState *state, Node *node, int *then,
 
 /* @import stage */
 
-#line 71 "builtin-stages.exc"
+#line 71 "src/builtin-stages.exc"
  Node *transformImportStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -164,7 +164,7 @@ static Node *transformExtensionStageF(TransformState *state, Node *node, int *th
 
 /* @extension stage */
 
-#line 161 "builtin-stages.exc"
+#line 161 "src/builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -329,7 +329,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 
 /* header stage */
 
-#line 324 "builtin-stages.exc"
+#line 324 "src/builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -600,7 +600,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
 
 /* @raw stage */
 
-#line 601 "builtin-stages.exc"
+#line 601 "src/builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;

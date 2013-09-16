@@ -10,7 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
 
-#line 13 "node.exc"
+#line 13 "src/node.exc"
 #define _XOPEN_SOURCE 700
 #include "node.h"
 
@@ -26,7 +26,7 @@
 
 /* create a node */
 
-#line 37 "node.exc"
+#line 37 "src/node.exc"
  Node *newNode(Node *parent, int type, Token *tok, size_t children)
 {
     Node *ret;
@@ -39,7 +39,7 @@
 
 /* free a node and all the tokens and nodes under it */
 
-#line 48 "node.exc"
+#line 48 "src/node.exc"
  void freeNode(Node *node)
 {
     size_t i;
@@ -52,7 +52,7 @@
 
 /* Create a token. All memory becomes owned by the token. */
 
-#line 59 "node.exc"
+#line 59 "src/node.exc"
  Token *newToken(int type, int dup, char *pre, char *tok)
 {
     Token *ret;
@@ -82,7 +82,7 @@
 
 /* free a token */
 
-#line 87 "node.exc"
+#line 87 "src/node.exc"
  void freeToken(Token *tok)
 {
     free(tok->pre);

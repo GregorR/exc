@@ -1,5 +1,5 @@
-#ifndef EXC_whereami
-#define EXC_whereami 1
+#ifndef EXC_src_whereami
+#define EXC_src_whereami 1
 /*
  * Written in 2005, 2006, 2013 by Gregor Richards
  *
@@ -18,6 +18,6 @@
  * fil: Where to put the filename component
  * returns a pointer to dir or NULL for failure */
 
-#line 50 "whereami.exc"
+#line 50 "src/whereami.exc"
  char *whereAmI(const char *argvz, char **dir, char **fil);
 #endif

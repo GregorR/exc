@@ -1,5 +1,5 @@
-#ifndef EXC_unparse
-#define EXC_unparse 1
+#ifndef EXC_src_unparse
+#define EXC_src_unparse 1
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -27,24 +27,24 @@
 
 /* convert a token type to a name */
 
-#line 27 "unparse.exc"
+#line 27 "src/unparse.exc"
  const char *tokenName(int n);
 
 /* convert a node type (numeric) to a name */
 
-#line 38 "unparse.exc"
+#line 38 "src/unparse.exc"
  const char *nodeName(int n);
 
 
-#line 107 "unparse.exc"
+#line 107 "src/unparse.exc"
  struct Buffer_char cunparse(struct Buffer_charp *filenames, Node *node);
 
 
 
-#line 118 "unparse.exc"
+#line 118 "src/unparse.exc"
  struct Buffer_char cunparseStrLiteral(Token *tok);
 
 
-#line 268 "unparse.exc"
+#line 268 "src/unparse.exc"
  struct Buffer_char cunparseJSON(Node *node);
 #endif

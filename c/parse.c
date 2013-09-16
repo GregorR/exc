@@ -17,7 +17,7 @@
 #include "string.h"
 
 
-#line 38 "parse.exc"
+#line 38 "src/parse.exc"
 typedef struct ParseState_ {
     ScanState *scanState;
 
@@ -1864,7 +1864,7 @@ static Node *parseDecorationOpenOpt(ParseState *state, Node *parent) { Node *ret
  * ENTRY POINT                                                 *
  ***************************************************************/
 
-#line 2040 "parse.exc"
+#line 2040 "src/parse.exc"
  Node *cparse(ScanState *state, char **error)
 {
     ParseState pState;

@@ -1,5 +1,5 @@
-#ifndef EXC_exec
-#define EXC_exec 1
+#ifndef EXC_src_exec
+#define EXC_src_exec 1
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -20,7 +20,7 @@
 /* run this command with the given input (as a buffer, non-null-terminated),
  * returning output as a buffer, again non-null-terminated */
 
-#line 26 "exec.exc"
+#line 26 "src/exec.exc"
  struct Buffer_char execBuffered(
     char *const cmd[],
     struct Buffer_char input,

@@ -1,5 +1,5 @@
-#ifndef EXC_parse
-#define EXC_parse 1
+#ifndef EXC_src_parse
+#define EXC_src_parse 1
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -27,17 +27,17 @@
 #include "buffer.h"
 
 
-#line 26 "parse.exc"
+#line 26 "src/parse.exc"
 BUFFER(Tokenp, Token *);
 
 
-#line 28 "parse.exc"
+#line 28 "src/parse.exc"
  enum Nodes {
     NODE_FIRST = 0,
 
 
 /* Constants/literals */
-#line 2 "nodes.h"
+#line 2 "./nodes.h"
 NODE_NIL,
 
 NODE_TOK,
@@ -198,7 +198,7 @@ NODE_DECLARATION_DECORATOR,
 NODE_DECORATION_SUB_DECLARATION,
 
 
-#line 35 "parse.exc"
+#line 35 "src/parse.exc"
     NODE_LAST
 };
 
@@ -207,6 +207,6 @@ NODE_DECORATION_SUB_DECLARATION,
  * ENTRY POINT                                                 *
  ***************************************************************/
 
-#line 2040 "parse.exc"
+#line 2040 "src/parse.exc"
  Node *cparse(ScanState *state, char **error);
 #endif

@@ -21,15 +21,15 @@
 
 /* convert a token type to a name */
 
-#line 27 "unparse.exc"
+#line 27 "src/unparse.exc"
  const char *tokenName(int n)
 {
     switch (n) {
 
-#line 1 "tokens.h"
+#line 1 "./tokens.h"
 case TOK_KEY_FIRST: return "KEY_FIRST";
 
-#line 1 "keywords.h"
+#line 1 "./keywords.h"
 case TOK_auto: return "auto";
 case TOK_break: return "break";
 case TOK_case: return "case";
@@ -75,7 +75,7 @@ case TOK__Noreturn: return "_Noreturn";
 case TOK__Static_assert: return "_Static_assert";
 case TOK__Thread_local: return "_Thread_local";
 
-#line 5 "tokens.h"
+#line 5 "./tokens.h"
 case TOK_KEY_LAST: return "KEY_LAST";
 
 case TOK_ID: return "ID";
@@ -150,20 +150,20 @@ case TOK_PUNC_LAST: return "PUNC_LAST";
 
 case TOK_TERM: return "TERM";
 
-#line 33 "unparse.exc"
+#line 33 "src/unparse.exc"
         default: return "???";
     }
 }
 
 /* convert a node type (numeric) to a name */
 
-#line 38 "unparse.exc"
+#line 38 "src/unparse.exc"
  const char *nodeName(int n)
 {
     switch (n) {
 
 /* Constants/literals */
-#line 2 "nodes.h"
+#line 2 "./nodes.h"
 case NODE_NIL: return "NIL";
 
 case NODE_TOK: return "TOK";
@@ -323,7 +323,7 @@ case NODE_DECLARATION_DECORATOR_LIST: return "DECLARATION_DECORATOR_LIST";
 case NODE_DECLARATION_DECORATOR: return "DECLARATION_DECORATOR";
 case NODE_DECORATION_SUB_DECLARATION: return "DECORATION_SUB_DECLARATION";
 
-#line 44 "unparse.exc"
+#line 44 "src/unparse.exc"
         default: return "???";
     }
 }
@@ -388,7 +388,7 @@ static void unparsePrime(struct Buffer_char *buf,
 }
 
 
-#line 107 "unparse.exc"
+#line 107 "src/unparse.exc"
  struct Buffer_char cunparse(struct Buffer_charp *filenames, Node *node)
 {
     struct Buffer_char buf;
@@ -401,7 +401,7 @@ static void unparsePrime(struct Buffer_char *buf,
 
 
 
-#line 118 "unparse.exc"
+#line 118 "src/unparse.exc"
  struct Buffer_char cunparseStrLiteral(Token *tok)
 {
     struct Buffer_char buf;
@@ -553,7 +553,7 @@ static void unparseJSONPrime(struct Buffer_char *buf, Node *node)
 }
 
 
-#line 268 "unparse.exc"
+#line 268 "src/unparse.exc"
  struct Buffer_char cunparseJSON(Node *node)
 {
     struct Buffer_char buf;

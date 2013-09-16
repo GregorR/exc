@@ -1,5 +1,5 @@
-#ifndef EXC_spec
-#define EXC_spec 1
+#ifndef EXC_src_spec
+#define EXC_src_spec 1
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -19,7 +19,7 @@
 
 /* FIXME: Should this be at the C level or the exc level? */
 
-#line 39 "spec.exc"
+#line 39 "src/spec.exc"
  typedef struct SpecCmd_ {
     struct Buffer_charp cmd;
     struct Buffer_int repPositions; /* which parameters are replaceable */
@@ -27,7 +27,7 @@
 } SpecCmd;
 
 
-#line 45 "spec.exc"
+#line 45 "src/spec.exc"
  typedef struct Spec_ {
     SpecCmd *cpp, *cc, *ld;
     struct Buffer_charp defaultNames;
@@ -36,12 +36,12 @@
 
 /* load the default or specified spec file (return allocated) */
 
-#line 153 "spec.exc"
+#line 153 "src/spec.exc"
  Spec *excLoadSpec(const char *bindir, const char *file);
 
 /* run a spec command with the given replacements */
 
-#line 234 "spec.exc"
+#line 234 "src/spec.exc"
  struct Buffer_char execSpec(
     Spec *spec, SpecCmd *cmd,
     char *const addlFlags[],

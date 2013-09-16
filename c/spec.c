@@ -10,7 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
 
-#line 13 "spec.exc"
+#line 13 "src/spec.exc"
 #define _XOPEN_SOURCE 700
 #include "spec.h"
 
@@ -35,7 +35,7 @@
 #include "string.h"
 
 
-#line 51 "spec.exc"
+#line 51 "src/spec.exc"
 static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void *arg)
 {
     SpecCmd **ret = (SpecCmd **) arg;
@@ -139,7 +139,7 @@ static void freeSpecCmd(SpecCmd *cmd)
 
 /* load the default or specified spec file (return allocated) */
 
-#line 153 "spec.exc"
+#line 153 "src/spec.exc"
  Spec *excLoadSpec(const char *bindir, const char *file)
 {
     FILE *f = NULL;
@@ -222,7 +222,7 @@ static void freeSpecCmd(SpecCmd *cmd)
 
 /* run a spec command with the given replacements */
 
-#line 234 "spec.exc"
+#line 234 "src/spec.exc"
  struct Buffer_char execSpec(
     Spec *spec, SpecCmd *cmd,
     char *const addlFlags[],

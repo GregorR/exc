@@ -10,7 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
 
-#line 13 "scan.exc"
+#line 13 "src/scan.exc"
 #define _XOPEN_SOURCE 700
 #include "scan.h"
 
@@ -23,7 +23,7 @@
 
 
 
-#line 40 "scan.exc"
+#line 40 "src/scan.exc"
  ScanState newScanState(struct Buffer_charp *filenames)
 {
     ScanState ret;
@@ -136,7 +136,7 @@ static char *getWhite(ScanState *state)
 }
 
 
-#line 151 "scan.exc"
+#line 151 "src/scan.exc"
  Token *cscan(ScanState *state)
 {
     Token *ret = NULL;
@@ -242,7 +242,7 @@ retryWhite:
 
         /* now check if it's a keyword */
 
-#line 1 "keywords.h"
+#line 1 "./keywords.h"
 if (!strcmp(tok, "auto")) { ttype = TOK_auto; } else
 if (!strcmp(tok, "break")) { ttype = TOK_break; } else
 if (!strcmp(tok, "case")) { ttype = TOK_case; } else
@@ -288,7 +288,7 @@ if (!strcmp(tok, "_Noreturn")) { ttype = TOK__Noreturn; } else
 if (!strcmp(tok, "_Static_assert")) { ttype = TOK__Static_assert; } else
 if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
 
-#line 258 "scan.exc"
+#line 258 "src/scan.exc"
         { ttype = TOK_ID; }
 
     } else if (cisdigit(c) || (c == '.' && cisdigit(buf->buf[i+1]))) {

@@ -1,5 +1,5 @@
-#ifndef EXC_scan
-#define EXC_scan 1
+#ifndef EXC_src_scan
+#define EXC_src_scan 1
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -19,15 +19,15 @@
 
 
 
-#line 24 "scan.exc"
+#line 24 "src/scan.exc"
  enum Tokens {
     TOK_FIRST = 0,
 
 
-#line 1 "tokens.h"
+#line 1 "./tokens.h"
 TOK_KEY_FIRST,
 
-#line 1 "keywords.h"
+#line 1 "./keywords.h"
 TOK_auto,
 TOK_break,
 TOK_case,
@@ -73,7 +73,7 @@ TOK__Noreturn,
 TOK__Static_assert,
 TOK__Thread_local,
 
-#line 5 "tokens.h"
+#line 5 "./tokens.h"
 TOK_KEY_LAST,
 
 TOK_ID,
@@ -149,12 +149,12 @@ TOK_PUNC_LAST,
 TOK_TERM,
 
 
-#line 31 "scan.exc"
+#line 31 "src/scan.exc"
     TOK_LAST
 };
 
 
-#line 34 "scan.exc"
+#line 34 "src/scan.exc"
  typedef struct ScanState_ {
     struct Buffer_charp *filenames;
     struct Buffer_char buf;
@@ -162,10 +162,10 @@ TOK_TERM,
 } ScanState;
 
 
-#line 40 "scan.exc"
+#line 40 "src/scan.exc"
  ScanState newScanState(struct Buffer_charp *filenames);
 
 
-#line 151 "scan.exc"
+#line 151 "src/scan.exc"
  Token *cscan(ScanState *state);
 #endif

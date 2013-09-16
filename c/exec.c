@@ -10,7 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
 
-#line 13 "exec.exc"
+#line 13 "src/exec.exc"
 #define _XOPEN_SOURCE 700
 #include "exec.h"
 
@@ -27,7 +27,7 @@
 /* run this command with the given input (as a buffer, non-null-terminated),
  * returning output as a buffer, again non-null-terminated */
 
-#line 26 "exec.exc"
+#line 26 "src/exec.exc"
  struct Buffer_char execBuffered(
     char *const cmd[],
     struct Buffer_char input,

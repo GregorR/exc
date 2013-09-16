@@ -1,5 +1,5 @@
-#ifndef EXC_builtin_stages
-#define EXC_builtin_stages 1
+#ifndef EXC_src_builtin_stages
+#define EXC_src_builtin_stages 1
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -19,21 +19,21 @@
 
 /* @import stage */
 
-#line 71 "builtin-stages.exc"
+#line 71 "src/builtin-stages.exc"
  Node *transformImportStage(TransformState *state, Node *node, int isprimary);
 
 /* @extension stage */
 
-#line 161 "builtin-stages.exc"
+#line 161 "src/builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary);
 
 /* header stage */
 
-#line 324 "builtin-stages.exc"
+#line 324 "src/builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary);
 
 /* @raw stage */
 
-#line 601 "builtin-stages.exc"
+#line 601 "src/builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary);
 #endif

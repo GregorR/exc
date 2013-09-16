@@ -1,5 +1,5 @@
-#ifndef EXC_node
-#define EXC_node 1
+#ifndef EXC_src_node
+#define EXC_src_node 1
 /*
  * Written in 2013 by Gregor Richards
  *
@@ -16,7 +16,7 @@
 
 
 
-#line 23 "node.exc"
+#line 23 "src/node.exc"
  typedef struct Token_ {
     int type;
     size_t idx, f, l, c;
@@ -24,7 +24,7 @@
 } Token;
 
 
-#line 29 "node.exc"
+#line 29 "src/node.exc"
  typedef struct Node_ {
     struct Node_ *parent;
     int type;
@@ -34,21 +34,21 @@
 
 /* create a node */
 
-#line 37 "node.exc"
+#line 37 "src/node.exc"
  Node *newNode(Node *parent, int type, Token *tok, size_t children);
 
 /* free a node and all the tokens and nodes under it */
 
-#line 48 "node.exc"
+#line 48 "src/node.exc"
  void freeNode(Node *node);
 
 /* Create a token. All memory becomes owned by the token. */
 
-#line 59 "node.exc"
+#line 59 "src/node.exc"
  Token *newToken(int type, int dup, char *pre, char *tok);
 
 /* free a token */
 
-#line 87 "node.exc"
+#line 87 "src/node.exc"
  void freeToken(Token *tok);
 #endif

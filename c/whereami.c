@@ -10,7 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
 
-#line 13 "whereami.exc"
+#line 13 "src/whereami.exc"
 #define _XOPEN_SOURCE 700
 #include "whereami.h"
 
@@ -32,7 +32,7 @@
  * full: Full path
  * dir: Where to put the dir component
  * fil: Where to put the file component */
-#line 27 "whereami.exc"
+#line 27 "src/whereami.exc"
 static void dirAndFil(const char *full, char **dir, char **fil)
 {
     *dir = strdup(full);
@@ -57,7 +57,7 @@ static void dirAndFil(const char *full, char **dir, char **fil)
  * fil: Where to put the filename component
  * returns a pointer to dir or NULL for failure */
 
-#line 50 "whereami.exc"
+#line 50 "src/whereami.exc"
  char *whereAmI(const char *argvz, char **dir, char **fil)
 {
     char *workd, *path, *retname;

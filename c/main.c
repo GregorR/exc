@@ -10,7 +10,7 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
  */ 
 
-#line 13 "main.exc"
+#line 13 "src/main.exc"
 #define _XOPEN_SOURCE 700
 
 #include "stdio.h"
@@ -20,6 +20,10 @@
 #include "string.h"
 
 #include "sys/types.h"
+
+#include "sys/stat.h"
+
+#include "unistd.h"
 
 
 #include "spec.h"
@@ -31,11 +35,20 @@
 #include "whereami.h"
 
 
-#line 25 "main.exc"
+/* is fa newer than fb? (If anything fails, assume yes) */
+#line 28 "src/main.exc"
+static int newer(char *fa, char *fb)
+{
+    struct stat sa, sb;
+    if (stat(fa, &sa) < 0) return 1;
+    if (stat(fb, &sb) < 0) return 1;
+    return sa.st_mtime >= sb.st_mtime;
+}
+
 int main(int argc, char **argv)
 {
     int i, tmpi;
-    size_t si;
+    size_t si, len;
     char *bindir, *binfil;
     Spec *spec;
     struct Buffer_charp cflags, cppflags,
@@ -45,11 +58,13 @@ int main(int argc, char **argv)
 
     /* flag options */
     int excOnly = 0,
-        compileOnly = 0;
+        compileOnly = 0,
+        rebuild = 0;
     char *specFile = NULL;
     char *outFile = NULL;
-    char *cPrefix = "";
-    char *oPrefix = "";
+    char *excPrefix = "",
+         *cPrefix = "",
+         *oPrefix = "";
     struct Buffer_charp specDefNames, specDefVals;
 
     if (!whereAmI(argv[0], &bindir, &binfil)) {
@@ -85,15 +100,30 @@ int main(int argc, char **argv)
                 } else if (!strcmp(arg, "-eonly")) {
                     excOnly = 1;
 
+                } else if (!strcmp(arg, "-erebuild")) {
+                    rebuild = 1;
+
+                } else if (!strcmp(arg, "-exc-prefix") && narg) {
+                    char *ipath;
+                    excPrefix = narg;
+                    i++;
+
+                    /* this also needs to be an -I path */
+                    SF(ipath, malloc, NULL, (strlen(narg) + 3));
+                    sprintf(ipath, "-I%s", narg);
+                    WRITE_ONE_BUFFER(cflags, ipath);
+                    WRITE_ONE_BUFFER(cppflags, ipath);
+
                 } else if (!strcmp(arg, "-ec-prefix") && narg) {
                     char *ipath;
                     cPrefix = narg;
                     i++;
 
                     /* this also needs to be an -I path */
-                    SF(ipath, malloc, NULL, (strlen(cPrefix) + 4));
+                    SF(ipath, malloc, NULL, (strlen(cPrefix) + 3));
                     sprintf(ipath, "-I%s", cPrefix);
                     WRITE_ONE_BUFFER(cflags, ipath);
+                    WRITE_ONE_BUFFER(cppflags, ipath);
 
                 } else if (!strcmp(arg, "-eo-prefix") && narg) {
                     oPrefix = narg;
@@ -217,10 +247,16 @@ int main(int argc, char **argv)
 
     INIT_BUFFER(excfileso);
     INIT_BUFFER(excfilesoh);
+    len = strlen(excPrefix);
     for (si = 0; si < excfiles.bufused; si++) {
         char *excfile, *cfile, *hfile, *ofile, *ext;
         excfile = excfiles.buf[si];
 
+        /* if it starts with the exc prefix, skip it */
+        if (!strncmp(excfile, excPrefix, len))
+            excfile += len;
+
+        /* make the .c file from the .exc file */
         SF(cfile, malloc, NULL, (strlen(cPrefix) + strlen(excfile) + 1));
         sprintf(cfile, "%s%s", cPrefix, excfile);
         ext = strrchr(cfile, '.');
@@ -229,6 +265,7 @@ int main(int argc, char **argv)
         WRITE_ONE_BUFFER(excfileso, cfile);
         WRITE_ONE_BUFFER(cfiles, cfile);
 
+        /* make the .h file from the .exc file */
         SF(hfile, malloc, NULL, (strlen(cPrefix) + strlen(excfile) + 1));
         sprintf(hfile, "%s%s", cPrefix, excfile);
         ext = strrchr(hfile, '.');
@@ -236,6 +273,7 @@ int main(int argc, char **argv)
             strcpy(ext, ".h");
         WRITE_ONE_BUFFER(excfilesoh, hfile);
 
+        /* and make the .o file from the .c file */
         SF(ofile, malloc, NULL, (strlen(oPrefix) + strlen(excfile) + 1));
         sprintf(ofile, "%s%s", oPrefix, excfile);
         ext = strrchr(ofile, '.');
@@ -250,6 +288,9 @@ int main(int argc, char **argv)
     for (si = 0; si < excfiles.bufused; si++) {
         TransformState state;
         char *file, *ext;
+
+        if (!rebuild && !newer(excfiles.buf[si], excfileso.buf[si]))
+            continue;
 
         /* remove .exc */
         SF(file, strdup, NULL, (excfiles.buf[si]));
@@ -309,6 +350,8 @@ int main(int argc, char **argv)
         } else {
             ofname = cfileso.buf[si];
         }
+
+        if (!rebuild && !newer(cfiles.buf[si], ofname)) continue;
 
         /* compile */
         repVals[0] = cfiles.buf[si];
