@@ -18,6 +18,9 @@ Because @ is not used in normal C, it is perfectly unambiguous with
 conventional C code. In fact, conventional C code can be compiled with exc
 flawlessly[2]. The purpose of exc is not to replace C, only to extend it.
 
+exc's changes to C's syntax are documented in exc-vs-c.txt and decorations.txt.
+exc's builtin decorations are documented in exc.txt.
+
 [1] Not that this is a good idea.
 
 [2] exc is preprocessed, like C, but because preprocessing includes all
