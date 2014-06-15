@@ -35,7 +35,7 @@
 @public typedef Node *(*transform_func_t)(TransformState *, Node *, int *then, void *arg);
 @public typedef int (*transform_condition_func_t)(TransformState *, Node *);
 @public typedef Node *(*transform_stage_func_t)(TransformState *, Node *, int isprimary);
-@public typedef transform_stage_func_t *(*transform_loader_func_t)(TransformState *);
+@public typedef void (*transform_loader_func_t)(TransformState *);
 
 /* "then" options */
 @public enum {
@@ -54,7 +54,8 @@
 
 @public struct TransformState_ {
     const char *bindir;
-    struct Buffer_Transform transforms;
+    struct Buffer_charp extensions; /* loaded extensions */
+    struct Buffer_Transform transforms; /* extension transforms */
     struct Buffer_charp ppfilenames; /* filenames, as seen by the preprocessor */
     struct Buffer_charp filenames; /* filenames handled by exc */
     struct Buffer_Nodep files;
@@ -336,7 +337,7 @@ outer:
 @public TransformState transformFile(const char *bindir, Spec *spec, char *const cflags[], char *filename)
 {
     TransformState state;
-    size_t i;
+    size_t i, ti;
     int tmpi;
     Node *node;
     char *defFilename;
@@ -401,7 +402,16 @@ outer:
         state.files.buf[i] = transformImportStage(&state, state.files.buf[i], (i == 0));
     }
 
-    /* @extension unimplemented */
+    /* look for extensions */
+    for (i = 0; i < state.files.bufused; i++)
+        state.files.buf[i] = transformExtensionStage(&state, state.files.buf[i], (i == 0));
+
+    /* run the extensions */
+    for (ti = 0; ti < state.transforms.bufused; ti++) {
+        Transform t = state.transforms.buf[ti];
+        for (i = 0; i < state.files.bufused; i++)
+            state.files.buf[i] = t.func(&state, state.files.buf[i], (i == 0));
+    }
 
     /* header stage */
     for (i = 0; i < state.files.bufused; i++)
@@ -412,7 +422,6 @@ outer:
         state.files.buf[i] = transformRawStage(&state, state.files.buf[i], (i == 0));
 
     return state;
-
 }
 
 /* free a TransformState */
@@ -433,4 +442,14 @@ outer:
 
     if (state->header)
         freeNode(state->header);
+}
+
+/* add an extension to the transform state */
+@public void trAddStage(TransformState *state, const char *name, transform_stage_func_t func)
+{
+    Transform t;
+
+    SF(t.name, strdup, NULL, (name));
+    t.func = func;
+    WRITE_ONE_BUFFER(state->transforms, t);
 }

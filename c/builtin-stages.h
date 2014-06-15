@@ -24,16 +24,16 @@
 
 /* @extension stage */
 
-#line 161 "src/builtin-stages.exc"
+#line 158 "src/builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary);
 
 /* header stage */
 
-#line 324 "src/builtin-stages.exc"
+#line 321 "src/builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary);
 
 /* @raw stage */
 
-#line 601 "src/builtin-stages.exc"
+#line 598 "src/builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary);
 #endif

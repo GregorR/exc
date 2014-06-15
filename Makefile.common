@@ -25,6 +25,7 @@ OBJS=$(addprefix o/,$(SRC:.exc=.lo))
 csrc: $(CSRC)
 
 c/%.c: src/%.exc
+	mkdir -p c
 	-$(EXC) $(EXCFLAGS) $(CFLAGS) -eonly $<
 
 o/exists:

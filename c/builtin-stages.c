@@ -112,7 +112,6 @@ static Node *transformExtensionStageF(TransformState *state, Node *node, int *th
     struct Buffer_char name;
     Node *repl;
     size_t i;
-    Transform trans;
     void *lib;
     transform_loader_func_t loader;
 
@@ -129,8 +128,8 @@ static Node *transformExtensionStageF(TransformState *state, Node *node, int *th
     trReplace(node->parent->parent, repl, 1);
 
     /* check if it's already loaded */
-    for (i = 0; i < state->transforms.bufused; i++) {
-        if (!strcmp(state->transforms.buf[i].name, name.buf)) {
+    for (i = 0; i < state->extensions.bufused; i++) {
+        if (!strcmp(state->extensions.buf[i], name.buf)) {
             /* already loaded this, nothing to do! */
             FREE_BUFFER(name);
             return repl;
@@ -138,33 +137,31 @@ static Node *transformExtensionStageF(TransformState *state, Node *node, int *th
     }
 
     /* OK, we haven't loaded it, so do so */
-    trans.name = name.buf;
+    WRITE_ONE_BUFFER(state->extensions, name.buf);
 
     /* try to load the library */
-    SF(lib, tryLoadLibrary, NULL, (bindir, trans.name));
+    SF(lib, tryLoadLibrary, NULL, (bindir, name.buf));
     if (!lib) {
-        fprintf(stderr, "%s: %s\n", trans.name, dlerror());
+        fprintf(stderr, "%s: %s\n", name.buf, dlerror());
         abort();
     }
 
     /* now get the loader function */
     loader = (transform_loader_func_t) (size_t) dlsym(lib, "exctension");
     if (!loader) {
-        fprintf(stderr, "%s: %s\n", trans.name, dlerror());
+        fprintf(stderr, "%s: %s\n", name.buf, dlerror());
         abort();
     }
 
-    /* and finally, load the actual stage function */
-    trans.func = (transform_stage_func_t) (size_t) loader(state);
-
-    WRITE_ONE_BUFFER(state->transforms, trans);
+    /* calling it should add stage functions */
+    loader(state);
 
     return repl;
 }
 
 /* @extension stage */
 
-#line 161 "src/builtin-stages.exc"
+#line 158 "src/builtin-stages.exc"
  Node *transformExtensionStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -329,7 +326,7 @@ Node *transformHeaderStageF(TransformState *state, Node *node, int *then, void *
 
 /* header stage */
 
-#line 324 "src/builtin-stages.exc"
+#line 321 "src/builtin-stages.exc"
  Node *transformHeaderStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
@@ -600,7 +597,7 @@ static Node *transformRawStageF(TransformState *state, Node *node, int *then, vo
 
 /* @raw stage */
 
-#line 601 "src/builtin-stages.exc"
+#line 598 "src/builtin-stages.exc"
  Node *transformRawStage(TransformState *state, Node *node, int isprimary)
 {
     TrFind find;
