@@ -166,6 +166,6 @@ TOK_TERM,
  ScanState newScanState(struct Buffer_charp *filenames);
 
 
-#line 151 "src/scan.exc"
+#line 153 "src/scan.exc"
  Token *cscan(ScanState *state);
 #endif

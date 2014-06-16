@@ -99,8 +99,8 @@ static void *tryLoadLibrary(const char *bindir, const char *name)
         return dlib;
     }
 
-    /* then try bindir/.libs, for uninstalled extensions */
-    sprintf(lib, "%s/.libs/exc-%s.so", bindir, name);
+    /* then try bindir, for uninstalled extensions */
+    sprintf(lib, "%s/exc-%s.so", bindir, name);
     dlib = dlopen(lib, RTLD_NOW|RTLD_LOCAL);
     free(lib);
     return dlib;
@@ -140,7 +140,7 @@ static Node *transformExtensionStageF(TransformState *state, Node *node, int *th
     WRITE_ONE_BUFFER(state->extensions, name.buf);
 
     /* try to load the library */
-    SF(lib, tryLoadLibrary, NULL, (bindir, name.buf));
+    lib = tryLoadLibrary(bindir, name.buf);
     if (!lib) {
         fprintf(stderr, "%s: %s\n", name.buf, dlerror());
         abort();

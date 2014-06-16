@@ -1,0 +1,413 @@
+Parser                      Child/Node ID
+
+
+******** FORMAT ************************************************
+
+Each parser yields a node. Nodes have a token, followed by any number of child
+nodes. The token is considered element -1 (i.e., the child nodes start from
+node 0).
+
+For basic nodes, the parser creates a node of the specified type, with a number
+of child nodes. For instance, in the following parser:
+
+Foo                         FOO
+                            Bar
+                            Baf
+
+The parser Foo may create a node of type NODE_FOO, with no starting token, with
+children[0] being the result of the parser Bar and children[1] being the result
+of parser Baf.
+
+Parsers which do expect to begin with a token will label the token as -1:
+
+Foo                         FOO
+                        -1  TOK_foo
+                            Bar
+                            Baf
+
+Bar and Baf in this example will still be children[0] and children[1].
+
+
+******** TRANSLATION UNIT **************************************
+
+Top                         FILE
+                            TranslationUnit
+                            TOK_TERM
+
+TranslationUnit             TRANSLATION_UNIT
+                            ExternalDeclaration*
+
+ExternalDeclaration
+                            FunctionDefinition
+
+ExternalDeclaration
+                            Declaration
+
+FunctionDefinition          DECORATED_FUNCTION_DEFINITION
+                            DeclarationDecoratorList
+                            FunctionDefinition
+
+FunctionDefinition          FUNCTION_DEFINITION
+                            DeclarationSpecifiers
+                            Declarator
+                            CompoundStatement
+
+DeclarationList             DECLARATION_LIST
+                            Declaration*
+
+
+******** STATEMENTS *********************************************
+
+Statement
+                            LabeledStatement
+                            CompoundStatement
+                            ExpressionStatement
+                            SelectionStatement
+                            IterationStatement
+                            JumpStatement
+
+LabeledStatement            LABELED_STATEMENT
+                        -1  Identifier
+                            TOK_COLON
+                            Statement
+
+LabeledStatement            CASE_STATEMENT
+                        -1  TOK_case
+                            ConditionalExpression
+                            TOK_COLON
+                            Statement
+
+LabeledStatement            DEFAULT_STATEMENT
+                        -1  TOK_default
+                            TOK_COLON
+                            Statement
+
+CompoundStatement           BLOCK
+                        -1  TOK_LBRACE
+                            BlockItemList?
+                            TOK_RBRACE
+
+BlockItem
+                            Declaration
+                            Statement
+
+BlockItemList               BLOCK_ITEM_LIST
+                            BlockItem*
+
+ExpressionStatement         EXPRESSION_STATEMENT
+                            Expression?
+                            TOK_SEMICOLON
+
+SelectionStatement          IF_STATEMENT
+                        -1  TOK_if
+                            TOK_LPAREN
+                            Expression
+                            TOK_RPAREN
+                            Statement
+
+SelectionStatement          SWITCH_STATEMENT
+                        -1  TOK_switch
+                            TOK_LPAREN
+                            Expression
+                            TOK_RPAREN
+                            Statement
+
+IterationStatement          WHILE_STATEMENT
+                        -1  TOK_while
+                            TOK_LPAREN
+                            Expression
+                            TOK_RPAREN
+                            Statement
+
+IterationStatement          DO_WHILE_STATEMENT
+                        -1  TOK_do
+                            Statement
+                            TOK_while
+                            TOK_LPAREN
+                            Expression
+                            TOK_RPAREN
+                            TOK_SEMICOLON
+
+IterationStatement          FOR_STATEMENT
+                        -1  TOK_for
+                            TOK_LPAREN
+                            ForInitializer
+                            Expression?
+                            TOK_SEMICOLON
+                            Expression?
+                            TOK_RPAREN
+                            Statement
+
+ForInitializer
+                            Declaration
+
+ForInitializer              FOR_INITIALIZER
+                            Expression?
+                            TOK_SEMICOLON
+
+JumpStatement               GOTO_STATEMENT
+                        -1  TOK_goto
+                            Identifier
+                            TOK_SEMICOLON
+
+JumpStatement               CONTINUE_STATEMENT
+                        -1  TOK_continue
+                            TOK_SEMICOLON
+
+JumpStatement               BREAK_STATEMENT
+                        -1  TOK_break
+                            TOK_SEMICOLON
+
+JumpStatement               RETURN_STATEMENT
+                        -1  TOK_return
+                            Expression?
+                            TOK_SEMICOLON
+
+
+******** DECLARATIONS *******************************************
+
+Declaration                 DECORATED_DECLARATION
+                            DeclarationDecoratorList
+                            Declaration
+
+Declaration                 DECORATION_DECLARATION
+                            DeclarationDecoratorList
+                            TOK_SEMICOLON
+
+Declaration                 DECLARATION
+                            DeclarationSpecifiers
+                            InitDeclaratorList?
+                            TOK_SEMICOLON
+
+Declaration
+                            StaticAssertDeclaration
+
+DeclarationSpecifiers       DECORATED_DECLARATION_SPECIFIERS
+                            DeclarationSpecifiers
+                            DeclarationDecoratorList
+
+DeclarationSpecifiers       DECLARATION_SPECIFIERS
+                            (
+                                StorageClassSpecifier
+                            |   TypeSpecifier
+                            |   TypeQualifier
+                            |   FunctionSpecifier
+                            |   AlignmentSpecifier
+                            )+
+
+InitDeclarator
+                            Declarator
+
+InitDeclarator              INIT_DECLARATOR
+                            Declarator
+                            TOK_ASG
+                            Initializer
+
+InitDeclaratorList          INIT_DECLARATOR_LIST
+                            InitDeclarator*
+
+StorageClassSpecifier       STORAGE_CLASS_SPECIFIER
+                        -1  (
+                                TOK_typedef
+                            |   TOK_extern
+                            |   TOK_static
+                            |   TOK__Thread_local
+                            |   TOK_auto
+                            |   TOK_register
+                            )
+
+TypeSpecifier               TYPE_SPECIFIER
+                        -1  (
+                                TOK_void
+                            |   TOK_char
+                            |   TOK_short
+                            |   TOK_int
+                            |   TOK_long
+                            |   TOK_float
+                            |   TOK_double
+                            |   TOK_signed
+                            |   TOK_unsigned
+                            |   TOK__Bool
+                            |   TOK__Complex
+                            |   TOK_ID
+                            )
+
+TypeSpecifier
+                            AtomicTypeSpecifier
+                            StructOrUnionSpecifier
+                            EnumSpecifier
+
+StructOrUnionSpecifier      STRUCT_OR_UNION_SPECIFIER
+                        -1  (
+                                TOK_struct
+                            |   TOK_union
+                            )
+                            Identifier
+
+StructOrUnionSpecifier      STRUCT_OR_UNION_SPECIFIER
+                        -1  (
+                                TOK_struct
+                            |   TOK_union
+                            )
+                            Identifier?
+                            TOK_LBRACE
+                            StructDeclarationList
+                            TOK_RBRACE
+
+StructDeclaration           STRUCT_DECLARATION
+                            SpecifierQualifierList
+                            StructDeclaratorList?
+                            TOK_SEMICOLON
+
+StructDeclaration
+                            StaticAssertDeclaration
+
+StructDeclarationList       STRUCT_DECLARATION_LIST
+                            StructDeclaration*
+
+SpecifierQualifierList      DECORATED_SPECIFIER_QUALIFIER_LIST
+                            SpecifierQualifierList
+                            DeclarationDecoratorList
+
+SpecifierQualifierList      SPECIFIER_QUALIFIER_LIST
+                            (
+                                TypeSpecifier
+                            |   TypeQualifier
+                            )*
+
+StructDeclarator
+                            Declarator
+
+StructDeclarator            BITFIELD_DECLARATOR
+                            Declarator
+                            TOK_COLON
+                            Constant
+
+StructDeclarator            BITFIELD_PADDING
+                        -1  TOK_COLON
+                            Constant
+
+StructDeclaratorList        STRUCT_DECLARATOR_LIST
+
+StructDeclaratorList        STRUCT_DECLARATOR_LIST
+                            StructDeclarator
+                            (
+                                TOK_COMMA
+                                StructDeclarator
+                            )*
+
+EnumSpecifier               ENUM_SPECIFIER
+                        -1  TOK_enum
+                            Identifier
+
+EnumSpecifier               ENUM_SPECIFIER
+                        -1  TOK_enum
+                            Identifier?
+                            TOK_LBRACE
+                            EnumeratorList
+                            (
+                                TOK_COMMA
+                                TOK_RBRACE
+                            )
+                            |   TOK_RBRACE
+
+Enumerator
+                            Identifier
+
+Enumerator                  ENUMERATOR
+                            Identifier
+                            TOK_ASG
+                            ConditionalExpression
+
+EnumeratorList              ENUMERATOR_LIST
+
+EnumeratorList              ENUMERATOR_LIST
+                            Enumerator
+                            (
+                                TOK_COMMA
+                                Enumerator
+                            )*
+
+AtomicTypeSpecifier         ATOMIC_TYPE_SPECIFIER
+                        -1  TOK__Atomic
+                            TOK_LPAREN
+                            TypeName
+                            TOK_RPAREN
+
+TypeQualifier               TYPE_QUALIFIER
+                        -1  (
+                                TOK_const
+                            |   TOK_restrict
+                            |   TOK_volatile
+                            |   TOK__Atomic
+                            )
+
+TypeQualifierList           TYPE_QUALIFIER_LIST
+                            TypeQualifier*
+
+FunctionSpecifier           FUNCTION_SPECIFIER
+                        -1  (
+                                TOK_inline
+                            |   TOK__Noreturn
+                            )
+
+AlignmentSpecifier          ALIGNMENT_SPECIFIER
+                        -1  TOK__Alignas
+                            TOK_LPAREN
+                            (
+                                TypeName
+                            |   ConditionalExpression
+                            )
+                            TOK_RPAREN
+
+Declarator                  DECLARATOR
+                            Pointer?
+                            DirectDeclarator
+
+DirectDeclarator
+                            HERE THERE BE DRAGONS
+
+Pointer                     POINTER
+                            (
+                                TOK_STAR
+                                TypeQualifierList?
+                            )*
+
+ParameterTypeList
+                            ParameterList
+
+ParameterTypeList           PARAMETER_TYPE_LIST
+                            ParameterList
+                            TOK_COMMA
+                            TOK_DOTDOTDOT
+
+ParameterDeclaration        PARAMETER_DECLARATION
+                            DeclarationSpecifiers
+                            Declarator
+
+ParameterDeclaration        PARAMETER_DECLARATION
+                            DeclarationSpecifiers
+                            AbstractDeclarator?
+
+ParameterList               PARAMETER_LIST
+
+ParameterList               PARAMETER_LIST
+                            ParameterDeclaration
+                            (
+                                TOK_COMMA
+                                ParameterDeclaration
+                            )*
+
+TypeName                    TYPE_NAME
+                            SpecifierQualifierList
+                            AbstractDeclarator?
+
+AbstractDeclarator
+                            Pointer
+
+AbstractDeclarator          ABSTRACT_DECLARATOR
+                            Pointer?
+                            DirectAbstractDeclarator
+
+DirectAbstractDeclarator
+                            HERE THERE BE DRAGONS

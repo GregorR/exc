@@ -26,11 +26,19 @@
     char *pre, *tok;
 } Token;
 
+@public typedef struct NodeSpecial_ {
+    struct NodeSpecial_ *next;
+    char *type;
+    void *val;
+    void (*free)();
+} NodeSpecial;
+
 @public typedef struct Node_ {
     struct Node_ *parent;
     int type;
     Token *tok;
     struct Node_ *children[1];
+    NodeSpecial *specials;
 } Node;
 
 /* create a node */
@@ -53,6 +61,23 @@
     if (node->tok)
         freeToken(node->tok);
     free(node);
+}
+
+/* add a special to this node */
+@public NodeSpecial *nodeAddSpecial(Node *node, const char *type)
+{
+    NodeSpecial *ret;
+
+    SF(ret, malloc, NULL, (sizeof(NodeSpecial)));
+    ret->next = node->specials;
+    node->specials = ret;
+
+    SF(ret->type, strdup, NULL, (type));
+
+    ret->val = NULL;
+    ret->free = NULL;
+
+    return ret;
 }
 
 /* Create a token. All memory becomes owned by the token. */

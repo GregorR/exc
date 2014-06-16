@@ -12,7 +12,7 @@ EEXCFLAGS=
 EXCFLAGS=-exc-prefix src/ -ec-prefix c/ $(EEXCFLAGS)
 
 ECFLAGS=-O0 -g -Wall -Werror -ansi -pedantic -Wno-unused-function
-CFLAGS=-Isrc -I$(ROOT_DIR)/src -I$(ROOT_DIR)/c
+CFLAGS=-Isrc -I$(ROOT_DIR)/src -I$(ROOT_DIR)/c $(ECFLAGS)
 LIBS=-ldl
 
 MLIBTOOL=$(ROOT_DIR)/mlibtool

@@ -26,7 +26,7 @@
 
 /* create a node */
 
-#line 37 "src/node.exc"
+#line 45 "src/node.exc"
  Node *newNode(Node *parent, int type, Token *tok, size_t children)
 {
     Node *ret;
@@ -39,7 +39,7 @@
 
 /* free a node and all the tokens and nodes under it */
 
-#line 48 "src/node.exc"
+#line 56 "src/node.exc"
  void freeNode(Node *node)
 {
     size_t i;
@@ -50,9 +50,28 @@
     free(node);
 }
 
+/* add a special to this node */
+
+#line 67 "src/node.exc"
+ NodeSpecial *nodeAddSpecial(Node *node, const char *type)
+{
+    NodeSpecial *ret;
+
+    SF(ret, malloc, NULL, (sizeof(NodeSpecial)));
+    ret->next = node->specials;
+    node->specials = ret;
+
+    SF(ret->type, strdup, NULL, (type));
+
+    ret->val = NULL;
+    ret->free = NULL;
+
+    return ret;
+}
+
 /* Create a token. All memory becomes owned by the token. */
 
-#line 59 "src/node.exc"
+#line 84 "src/node.exc"
  Token *newToken(int type, int dup, char *pre, char *tok)
 {
     Token *ret;
@@ -82,7 +101,7 @@
 
 /* free a token */
 
-#line 87 "src/node.exc"
+#line 112 "src/node.exc"
  void freeToken(Token *tok)
 {
     free(tok->pre);

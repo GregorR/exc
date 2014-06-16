@@ -171,11 +171,10 @@ va_arg(ap, Node *))
     return parent;
 }
 
-/* prepend a single node to an existing node, and perhaps give it the
- * successor's whitespace */
+/* insert a single node at a location within a given node */
 
-#line 204 "src/transform.exc"
- Node *trPrepend(Node *parent, Node *child)
+#line 203 "src/transform.exc"
+ Node *trInsert(Node *parent, size_t loc, Node *child)
 {
     size_t i, ni;
 
@@ -184,19 +183,59 @@ va_arg(ap, Node *))
     parent = trResize(parent, i + 1);
 
     /* move the children */
-    for (ni = i; ni >= 1; ni--)
+    for (ni = i; ni >= loc + 1; ni--)
         parent->children[ni] = parent->children[ni-1];
 
     /* and add the new node */
-    parent->children[0] = child;
+    parent->children[loc] = child;
     child->parent = parent;
 
     return parent;
 }
 
+/* insert before a given child node */
+
+#line 223 "src/transform.exc"
+ Node *trInsertBefore(Node *rel, Node *child)
+{
+    size_t loc;
+    Node *parent;
+
+    /* find the relative node */
+    parent = rel->parent;
+    for (loc = 0; parent->children[loc] && parent->children[loc] != rel; loc++);
+
+    return trInsert(parent, loc, child);
+}
+
+/* insert after a given child node */
+
+#line 236 "src/transform.exc"
+ Node *trInsertAfter(Node *rel, Node *child)
+{
+    size_t loc;
+    Node *parent;
+
+    /* find the relative node */
+    parent = rel->parent;
+    for (loc = 0; parent->children[loc] && parent->children[loc] != rel; loc++);
+    if (parent->children[loc]) loc++;
+
+    return trInsert(parent, loc, child);
+}
+
+/* prepend a single node to an existing node, and perhaps give it the
+ * successor's whitespace */
+
+#line 251 "src/transform.exc"
+ Node *trPrepend(Node *parent, Node *child)
+{
+    return trInsert(parent, 0, child);
+}
+
 /* duplicate a tree of nodes */
 
-#line 224 "src/transform.exc"
+#line 257 "src/transform.exc"
  Node *trDupNode(Node *node)
 {
     size_t i;
@@ -262,7 +301,7 @@ static int match(TransformState *state, Node *node, TrFind *find)
 
 /* perform the given transformation on matching nodes */
 
-#line 288 "src/transform.exc"
+#line 321 "src/transform.exc"
  void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg)
 {
     int then;
@@ -313,7 +352,7 @@ outer:
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
 
-#line 337 "src/transform.exc"
+#line 370 "src/transform.exc"
  TransformState transformFile(const char *bindir, Spec *spec, char *const cflags[], char *filename)
 {
     TransformState state;
@@ -406,7 +445,7 @@ outer:
 
 /* free a TransformState */
 
-#line 428 "src/transform.exc"
+#line 461 "src/transform.exc"
  void freeTransformState(TransformState *state)
 {
     size_t i;
@@ -428,7 +467,7 @@ outer:
 
 /* add an extension to the transform state */
 
-#line 448 "src/transform.exc"
+#line 481 "src/transform.exc"
  void trAddStage(TransformState *state, const char *name, transform_stage_func_t func)
 {
     Transform t;

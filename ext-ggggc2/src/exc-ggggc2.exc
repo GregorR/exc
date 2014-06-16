@@ -1,0 +1,255 @@
+@include(stdio.h);
+@include(stdlib.h);
+@include(string.h);
+
+@import(transform);
+@import(parse);
+
+static Node *excGGGGC2StructGCDeclaratorF(TransformState *state, Node *node, int *then, void *arg)
+{
+    struct Buffer_char gcname;
+    struct Buffer_charp *gcMembers = arg;
+
+    /* we only care about direct declarators of an ID (i.e., no children) */
+    if (node->children[0] || node->tok->type != TOK_ID) return node;
+
+    /* OK, we have our ID. Change it to a GC'd name */
+    INIT_BUFFER(gcname);
+    WRITE_BUFFER(gcname, node->tok->tok, strlen(node->tok->tok));
+    WRITE_BUFFER(gcname, "_gcptr", 7);
+    WRITE_ONE_BUFFER(*gcMembers, node->tok->tok);
+    node->tok->tok = gcname.buf;
+
+    return node;
+}
+
+static Node *excGGGGC2StructGCMemberF(TransformState *state, Node *node, int *then, void *arg)
+{
+    Node *structDeclaration, *structDeclaratorList;
+    TrFind find;
+
+    /*  STRUCT_DECLARATION (check)
+     *      DECORATED_SPECIFIER_QUALIFIER_LIST (check)
+     *          SPECIFIER_QUALIFIER_LIST
+     *          DECLARATION_DECORATOR_LIST
+     *              ...
+     *              DECLARATION_DECORATOR (@gc) -- you are here
+     *              ...
+     *      STRUCT_DECLARATOR_LIST (check)
+     *          ... and there are some IDs in here ...
+     */
+
+    /* make sure we're in the right place */
+    if (!node->parent ||
+        !node->parent->parent ||
+        node->parent->parent->type != NODE_DECORATED_SPECIFIER_QUALIFIER_LIST ||
+        node->parent->parent->parent->type != NODE_STRUCT_DECLARATION ||
+        node->parent->parent->parent->children[1]->type != NODE_STRUCT_DECLARATOR_LIST)
+        return node;
+
+    /* now look through the struct declarator list for names */
+    structDeclaration = node->parent->parent->parent;
+    structDeclaratorList = structDeclaration->children[1];
+    memset(&find, 0, sizeof(find));
+    find.matchNode[0] = NODE_DIRECT_DECLARATOR;
+    transform(state, structDeclaratorList, &find, excGGGGC2StructGCDeclaratorF, arg);
+
+    return node;
+}
+
+static Node *excGGGGC2StructsF(TransformState *state, Node *node, int *then, void *arg)
+{
+    Node *cur, *declarationSpecifiers, *structSpecifier, *typedeff, *ptrSpec;
+    size_t i;
+    char *name, *gcname;
+    struct Buffer_char buf;
+    struct Buffer_charp gcMembers;
+    TrFind find;
+
+    /*  DECORATED_DECLARATION
+     *      DECLARATION_DECORATOR_LIST
+     *          ...
+     *          DECLARATION_DECORATOR (@gc) -- you are here
+     *          ...
+     *      DECLARATION
+     *          DECLARATION_SPECIFIERS
+     *              ...
+     *              STRUCT_OR_UNION_SPECIFIER
+     *                  -1 TOK_struct
+     *                  ID (check)
+     *                  TOK_LBRACE (check)
+     *                  STRUCT_DECLARATION_LIST
+     *                      ...
+     *                  TOK_RBRACE
+     *              ...
+     */
+
+    /* make sure we're in the right place */
+    if (!node->parent ||
+        !node->parent->parent ||
+        node->parent->parent->type != NODE_DECORATED_DECLARATION ||
+        node->parent->parent->children[1]->children[0]->type != NODE_DECLARATION_SPECIFIERS)
+        return node;
+
+    /* look for the struct specifier */
+    declarationSpecifiers = node->parent->parent->children[1]->children[0];
+    for (i = 0; declarationSpecifiers->children[i]; i++) {
+        cur = declarationSpecifiers->children[i];
+        if (cur->type == NODE_STRUCT_OR_UNION_SPECIFIER) {
+            structSpecifier = cur;
+            break;
+        }
+    }
+
+    if (!structSpecifier) return node;
+
+    /* make sure it's actually a struct with an identifier */
+    if (structSpecifier->tok->type != TOK_struct ||
+        structSpecifier->children[0]->type != NODE_ID ||
+        !structSpecifier->children[1]) return node;
+
+    /* rename it to a GGGGC struct */
+    name = structSpecifier->children[0]->tok->tok;
+    INIT_BUFFER(buf);
+    WRITE_BUFFER(buf, "GGGGC__s_", 9);
+    WRITE_BUFFER(buf, name, strlen(name) + 1);
+    structSpecifier->children[0]->tok->tok = buf.buf;
+    gcname = buf.buf;
+
+    /* insert a typedef */
+    INIT_BUFFER(buf);
+    WRITE_BUFFER(buf, "\ntypedef struct ", 16);
+    WRITE_BUFFER(buf, gcname, strlen(gcname));
+    WRITE_BUFFER(buf, " *", 2);
+    WRITE_BUFFER(buf, name, strlen(name));
+    WRITE_BUFFER(buf, "_gcptr;", 7);
+    typedeff = cquickparse(&buf, parseDeclaration);
+    trInsertBefore(node->parent->parent, typedeff);
+    FREE_BUFFER(buf);
+
+    /* then replace/find all the gcptr members */
+    INIT_BUFFER(gcMembers);
+    memset(&find, 0, sizeof(find));
+    find.matchDecoration[0] = "gc";
+    transform(state, structSpecifier, &find, excGGGGC2StructGCMemberF, (void *) &gcMembers);
+
+    /* make our GC pointer specifier */
+    INIT_BUFFER(buf);
+    WRITE_BUFFER(buf, "\nstatic const uint64_t GGGGC__p_", 32);
+    WRITE_BUFFER(buf, name, strlen(name));
+    WRITE_BUFFER(buf, " = (\n", 5);
+    for (i = 0; i < gcMembers.bufused; i++) {
+        WRITE_ONE_BUFFER(buf, ' ');
+        /* (1<<(((size_t) (void *) &((Name_gcptr) 0)->gcmember_gcptr)/sizeof(void *))) |\n */
+        WRITE_BUFFER(buf, " (1<<(((size_t) (void *) &((", 28);
+        WRITE_BUFFER(buf, name, strlen(name));
+        WRITE_BUFFER(buf, "_gcptr) 0)->", 12);
+        WRITE_BUFFER(buf, gcMembers.buf[i], strlen(gcMembers.buf[i]));
+        WRITE_BUFFER(buf, "_gcptr)/sizeof(void *))) |\n", 27);
+        free(gcMembers.buf[i]);
+    }
+    WRITE_BUFFER(buf, " 0);", 4);
+    ptrSpec = cquickparse(&buf, parseDeclaration);
+    FREE_BUFFER(buf);
+    trInsertAfter(node->parent->parent, ptrSpec);
+
+    /* and finally, remove the @gc itself */
+    cur = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
+    trReplace(node, cur, 1);
+    freeNode(node);
+
+    return cur;
+}
+
+static Node *excGGGGC2Structs(TransformState *state, Node *node, int isprimary)
+{
+    TrFind find;
+
+    if (!isprimary) return node;
+
+    /* find @gc */
+    memset(&find, 0, sizeof(find));
+    find.matchDecoration[0] = "gc";
+    transform(state, node, &find, excGGGGC2StructsF, NULL);
+
+    return node;
+}
+
+static Node *excGGGGC2RefsF(TransformState *state, Node *node, int *then, void *arg)
+{
+    Node *specifierList, *repl;
+    size_t i;
+
+    /* We can be in a few places. In a struct: */
+    /*      DECORATED_SPECIFIER_QUALIFIER_LIST (check)
+     *          SPECIFIER_QUALIFIER_LIST
+     *          DECLARATION_DECORATOR_LIST
+     *              ...
+     *              DECLARATION_DECORATOR (@gc) -- you are here
+     *              ...
+     */
+
+    /* In any other declaration: */
+    /*      DECORATED_DECLARATION_SPECIFIERS (check)
+     *          DECLARATION_SPECIFIERS
+     *          DECLARATION_DECORATOR_LIST
+     *              ...
+     *              DECLARATION_DECORATOR (@gc) -- you are here
+     *              ...
+     */
+
+    if (!node->parent ||
+        !node->parent->parent) return node;
+
+    if (node->parent->parent->type != NODE_DECORATED_SPECIFIER_QUALIFIER_LIST &&
+        node->parent->parent->type != NODE_DECORATED_DECLARATION_SPECIFIERS)
+        return node;
+
+    /* OK, now just find the ID in the declaration specifiers */
+    specifierList = node->parent->parent->children[0];
+    for (i = 0; specifierList->children[i]; i++) {
+        Node *specifier = specifierList->children[i];
+        if (specifier->type == NODE_TYPE_SPECIFIER &&
+            specifier->tok->type == TOK_ID) {
+            /* it's a user type, annotate it */
+            struct Buffer_char buf;
+            INIT_BUFFER(buf);
+            WRITE_BUFFER(buf, specifier->tok->tok, strlen(specifier->tok->tok));
+            WRITE_BUFFER(buf, "_gcptr", 7);
+            free(specifier->tok->tok);
+            specifier->tok->tok = buf.buf;
+
+            /* FIXME: later, auto-add root sets and stack pointers */
+        }
+    }
+
+    /* finally, remove the @gc itself */
+    repl = newNode(NULL, NODE_NIL, newToken(TOK_PUNC_UNKNOWN, 0, NULL, NULL), 0);
+    trReplace(node, repl, 1);
+    freeNode(node);
+
+    return repl;
+}
+
+static Node *excGGGGC2Refs(TransformState *state, Node *node, int isprimary)
+{
+    TrFind find;
+
+    if (!isprimary) return node;
+
+    /* again, find @gc */
+    memset(&find, 0, sizeof(find));
+    find.matchDecoration[0] = "gc";
+    transform(state, node, &find, excGGGGC2RefsF, NULL);
+
+    return node;
+}
+
+void exctension(TransformState *state)
+{
+    /* first handle all the structs */
+    trAddStage(state, "ggggc2-structs", excGGGGC2Structs);
+
+    /* then handle all the @gc pointers */
+    trAddStage(state, "ggggc-refs", excGGGGC2Refs);
+}

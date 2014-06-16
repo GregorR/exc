@@ -107,35 +107,50 @@ BUFFER(Transform, Transform);
 #line 172 "src/transform.exc"
  Node *trAppend(Node *parent, ...);
 
+/* insert a single node at a location within a given node */
+
+#line 203 "src/transform.exc"
+ Node *trInsert(Node *parent, size_t loc, Node *child);
+
+/* insert before a given child node */
+
+#line 223 "src/transform.exc"
+ Node *trInsertBefore(Node *rel, Node *child);
+
+/* insert after a given child node */
+
+#line 236 "src/transform.exc"
+ Node *trInsertAfter(Node *rel, Node *child);
+
 /* prepend a single node to an existing node, and perhaps give it the
  * successor's whitespace */
 
-#line 204 "src/transform.exc"
+#line 251 "src/transform.exc"
  Node *trPrepend(Node *parent, Node *child);
 
 /* duplicate a tree of nodes */
 
-#line 224 "src/transform.exc"
+#line 257 "src/transform.exc"
  Node *trDupNode(Node *node);
 
 /* perform the given transformation on matching nodes */
 
-#line 288 "src/transform.exc"
+#line 321 "src/transform.exc"
  void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg);
 
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
 
-#line 337 "src/transform.exc"
+#line 370 "src/transform.exc"
  TransformState transformFile(const char *bindir, Spec *spec, char *const cflags[], char *filename);
 
 /* free a TransformState */
 
-#line 428 "src/transform.exc"
+#line 461 "src/transform.exc"
  void freeTransformState(TransformState *state);
 
 /* add an extension to the transform state */
 
-#line 448 "src/transform.exc"
+#line 481 "src/transform.exc"
  void trAddStage(TransformState *state, const char *name, transform_stage_func_t func);
 #endif

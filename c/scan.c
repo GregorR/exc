@@ -41,6 +41,8 @@ static size_t getFileNo(struct Buffer_charp *buf, char *name)
     size_t i;
     char *mname;
 
+    if (buf == NULL) return 0;
+
     for (i = 0; i < buf->bufused; i++)
         if (!strcmp(buf->buf[i], name)) return i;
 
@@ -136,7 +138,7 @@ static char *getWhite(ScanState *state)
 }
 
 
-#line 151 "src/scan.exc"
+#line 153 "src/scan.exc"
  Token *cscan(ScanState *state)
 {
     Token *ret = NULL;
@@ -288,7 +290,7 @@ if (!strcmp(tok, "_Noreturn")) { ttype = TOK__Noreturn; } else
 if (!strcmp(tok, "_Static_assert")) { ttype = TOK__Static_assert; } else
 if (!strcmp(tok, "_Thread_local")) { ttype = TOK__Thread_local; } else
 
-#line 258 "src/scan.exc"
+#line 260 "src/scan.exc"
         { ttype = TOK_ID; }
 
     } else if (cisdigit(c) || (c == '.' && cisdigit(buf->buf[i+1]))) {

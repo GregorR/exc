@@ -35,7 +35,7 @@
     NODE_LAST
 };
 
-typedef struct ParseState_ {
+@public typedef struct ParseState_ {
     ScanState *scanState;
 
     /* pushback tokens */
@@ -212,7 +212,8 @@ if (!(ret->children[chn] = expectN(state, ret, toktype))) { \
 #define REQUIRETR(chn, toktype) REQUIRETO(chn, toktype, RESTORE)
 
 /* type for a parser */
-#define PARSER(name) static Node *parse ## name(ParseState *state, Node *parent)
+@public typedef Node *(*parser_func_t)(ParseState *, Node *);
+#define PARSER(name) @public Node *parse ## name(ParseState *state, Node *parent)
 
 /* make an optional parser based on a parser `name` */
 #define OPT(name) \
@@ -228,7 +229,7 @@ PARSER(parserName) { return parse ## parserName ## L(state, parent, 1); } \
 PARSER(parserName ## Opt) { return parse ## parserName ## L(state, parent, 0); }
 
 #define COMMA_LIST(parserName, genNode, nextParser) \
-static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
+@public Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
 { \
     Node *ret, *node; \
     struct Buffer_Nodep buf; \
@@ -273,7 +274,7 @@ static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1
 PARSER_LIST(parserName)
 
 #define CONCAT_LIST(parserName, genNode, nextParser) \
-static Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
+@public Node *parse ## parserName ## L(ParseState *state, Node *parent, int need1) \
 { \
     Node *ret, *node; \
     struct Buffer_Nodep buf; \
@@ -2104,6 +2105,31 @@ OPT(DecorationOpen)
 
         *error = ebuf.buf;
     }
+
+    for (i = 0; i < pState.buf.bufused; i++)
+        freeToken(pState.buf.buf[i]);
+    FREE_BUFFER(pState.buf);
+    FREE_BUFFER(pState.eexpected);
+
+    return ret;
+}
+
+@public Node *cquickparse(struct Buffer_char *buf, parser_func_t func)
+{
+    ScanState state;
+    ParseState pState;
+    Node *ret;
+    int i;
+
+    state = newScanState(NULL);
+    state.buf = *buf;
+
+    pState.scanState = &state;
+    INIT_BUFFER(pState.buf);
+    pState.eidx = pState.el = pState.ec = 0;
+    INIT_BUFFER(pState.eexpected);
+
+    ret = func(&pState, NULL);
 
     for (i = 0; i < pState.buf.bufused; i++)
         freeToken(pState.buf.buf[i]);
