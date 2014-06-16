@@ -24,6 +24,8 @@ exc: o/main.o libexc.la $(MLIBTOOL)
 install: all
 	mkdir -p $(BIN_PREFIX)
 	$(LIBTOOL) --mode=install install exc $(BIN_PREFIX)
+	mkdir -p $(LIB_PREFIX)
+	$(LIBTOOL) --mode=install install libexc.la $(LIB_PREFIX)
 	mkdir -p $(EXT_PREFIX)
 	for i in $(EXTENSIONS); do \
 	    $(LIBTOOL) --mode=install install exc-$$i.la $(EXT_PREFIX); \
