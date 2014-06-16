@@ -1,6 +1,7 @@
 EXC=$(ROOT_DIR)/exc
 
 PREFIX=/usr
+BIN_PREFIX=$(PREFIX)/bin
 LIB_PREFIX=$(PREFIX)/lib
 EXT_PREFIX=$(LIB_PREFIX)/exc
 
