@@ -30,6 +30,10 @@ install: all
 	for i in $(EXTENSIONS); do \
 	    $(LIBTOOL) --mode=install install exc-$$i.la $(EXT_PREFIX); \
 	done
+	mkdir -p $(SPEC_PREFIX)
+	for i in spec/*.excspec; do \
+	    install -m0644 $$i $(SPEC_PREFIX); \
+	done
 
 clean:
 	rm -rf .libs o/.libs

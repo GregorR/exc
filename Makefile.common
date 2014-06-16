@@ -4,6 +4,7 @@ PREFIX=/usr
 BIN_PREFIX=$(PREFIX)/bin
 LIB_PREFIX=$(PREFIX)/lib
 EXT_PREFIX=$(LIB_PREFIX)/exc
+SPEC_PREFIX=$(PREFIX)/share/exc/spec
 
 CROSS=
 CC=$(CROSS)gcc
