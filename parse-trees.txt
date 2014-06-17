@@ -39,8 +39,6 @@ TranslationUnit             TRANSLATION_UNIT
 
 ExternalDeclaration
                             FunctionDefinition
-
-ExternalDeclaration
                             Declaration
 
 FunctionDefinition          DECORATED_FUNCTION_DEFINITION

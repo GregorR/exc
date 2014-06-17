@@ -304,13 +304,14 @@ static int match(TransformState *state, Node *node, TrFind *find)
 #line 321 "src/transform.exc"
  void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg)
 {
-    int then;
+    int mres, then;
     size_t i;
 
     /* find a matching node */
     while (node) {
         /* first try the node itself */
-        if (match(state, node, find)) {
+        mres = match(state, node, find);
+        if (mres == MATCH_MATCH) {
             Node *snode;
 
             then = THEN_INNER_EXCLUSIVE;
@@ -325,10 +326,12 @@ static int match(TransformState *state, Node *node, TrFind *find)
             }
         }
 
-        /* then children nodes */
-        if (node->children[0]) {
-            node = node->children[0];
-            continue;
+        if (mres != MATCH_NOTIN) {
+            /* then children nodes */
+            if (node->children[0]) {
+                node = node->children[0];
+                continue;
+            }
         }
 
         /* then siblings */
@@ -352,7 +355,7 @@ outer:
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
 
-#line 370 "src/transform.exc"
+#line 373 "src/transform.exc"
  TransformState transformFile(const char *bindir, Spec *spec, char *const cflags[], char *filename)
 {
     TransformState state;
@@ -445,7 +448,7 @@ outer:
 
 /* free a TransformState */
 
-#line 461 "src/transform.exc"
+#line 464 "src/transform.exc"
  void freeTransformState(TransformState *state)
 {
     size_t i;
@@ -467,7 +470,7 @@ outer:
 
 /* add an extension to the transform state */
 
-#line 481 "src/transform.exc"
+#line 484 "src/transform.exc"
  void trAddStage(TransformState *state, const char *name, transform_stage_func_t func)
 {
     Transform t;

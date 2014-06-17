@@ -320,13 +320,14 @@ static int match(TransformState *state, Node *node, TrFind *find)
 /* perform the given transformation on matching nodes */
 @public void transform(TransformState *state, Node *node, TrFind *find, transform_func_t func, void *arg)
 {
-    int then;
+    int mres, then;
     size_t i;
 
     /* find a matching node */
     while (node) {
         /* first try the node itself */
-        if (match(state, node, find)) {
+        mres = match(state, node, find);
+        if (mres == MATCH_MATCH) {
             Node *snode;
 
             then = THEN_INNER_EXCLUSIVE;
@@ -341,10 +342,12 @@ static int match(TransformState *state, Node *node, TrFind *find)
             }
         }
 
-        /* then children nodes */
-        if (node->children[0]) {
-            node = node->children[0];
-            continue;
+        if (mres != MATCH_NOTIN) {
+            /* then children nodes */
+            if (node->children[0]) {
+                node = node->children[0];
+                continue;
+            }
         }
 
         /* then siblings */

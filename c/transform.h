@@ -141,16 +141,16 @@ BUFFER(Transform, Transform);
 /* starting from the given file (malloc'd, now owned by TransformState), read,
  * preprocess, and transform */
 
-#line 370 "src/transform.exc"
+#line 373 "src/transform.exc"
  TransformState transformFile(const char *bindir, Spec *spec, char *const cflags[], char *filename);
 
 /* free a TransformState */
 
-#line 461 "src/transform.exc"
+#line 464 "src/transform.exc"
  void freeTransformState(TransformState *state);
 
 /* add an extension to the transform state */
 
-#line 481 "src/transform.exc"
+#line 484 "src/transform.exc"
  void trAddStage(TransformState *state, const char *name, transform_stage_func_t func);
 #endif
