@@ -1,0 +1,9 @@
+all: $(LIB)
+
+include $(ROOT_DIR)/Makefile.common
+
+$(LIB): $(OBJS)
+	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) -module -rpath $(LIB_PREFIX) $(OBJS) -o $@ ../libexc.la
+
+clean:
+	rm -rf c o .libs $(LIB)
