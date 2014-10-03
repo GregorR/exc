@@ -379,6 +379,7 @@ outer:
     char *defFilename;
 
     state.bindir = bindir;
+    INIT_BUFFER(state.extensions);
     INIT_BUFFER(state.transforms);
     INIT_BUFFER(state.ppfilenames);
     INIT_BUFFER(state.filenames);

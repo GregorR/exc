@@ -146,11 +146,11 @@ BUFFER(Transform, Transform);
 
 /* free a TransformState */
 
-#line 464 "src/transform.exc"
+#line 465 "src/transform.exc"
  void freeTransformState(TransformState *state);
 
 /* add an extension to the transform state */
 
-#line 484 "src/transform.exc"
+#line 485 "src/transform.exc"
  void trAddStage(TransformState *state, const char *name, transform_stage_func_t func);
 #endif

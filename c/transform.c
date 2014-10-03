@@ -365,6 +365,7 @@ outer:
     char *defFilename;
 
     state.bindir = bindir;
+    INIT_BUFFER(state.extensions);
     INIT_BUFFER(state.transforms);
     INIT_BUFFER(state.ppfilenames);
     INIT_BUFFER(state.filenames);
@@ -448,7 +449,7 @@ outer:
 
 /* free a TransformState */
 
-#line 464 "src/transform.exc"
+#line 465 "src/transform.exc"
  void freeTransformState(TransformState *state)
 {
     size_t i;
@@ -470,7 +471,7 @@ outer:
 
 /* add an extension to the transform state */
 
-#line 484 "src/transform.exc"
+#line 485 "src/transform.exc"
  void trAddStage(TransformState *state, const char *name, transform_stage_func_t func)
 {
     Transform t;
