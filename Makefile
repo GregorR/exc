@@ -4,8 +4,10 @@ SRC=\
 	builtin-stages.exc exec.exc node.exc parse.exc scan.exc spec.exc \
 	transform.exc unparse.exc whereami.exc
 
+# Note that namespace must come first, as it's used by exc itself
 EXTENSIONS=\
-	ggggc2 namespace
+	namespace \
+	ggggc2
 
 all: exc
 	for i in $(EXTENSIONS); do \

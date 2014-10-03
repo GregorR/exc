@@ -13,6 +13,9 @@
 @raw(#define _XOPEN_SOURCE 700 /* for strdup */);
 @include(spec.h);
 
+@extension(namespace);
+@use(excExec_);
+
 @import(exec);
 @import(node);
 @import(parse);

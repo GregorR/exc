@@ -16,12 +16,16 @@
 
 #include "buffer.h"
 
+#line 2 "???"
+#ifdef EXC_EXT_NAMESPACE_USING_excExec_
+#define execBuffered excExec_execBuffered
+#endif
 
 /* run this command with the given input (as a buffer, non-null-terminated),
  * returning output as a buffer, again non-null-terminated */
 
-#line 26 "src/exec.exc"
- struct Buffer_char execBuffered(
+#line 30 "src/exec.exc"
+ struct Buffer_char excExec_execBuffered(
     char *const cmd[],
     struct Buffer_char input,
     int *status);

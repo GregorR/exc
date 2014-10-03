@@ -15,6 +15,12 @@
 #include "spec.h"
 
 
+
+#line 2 "???"
+#ifndef EXC_EXT_NAMESPACE_USING_excExec_
+#define EXC_EXT_NAMESPACE_USING_excExec_ 1
+#endif
+
 #include "exec.h"
 
 #include "node.h"
@@ -35,7 +41,7 @@
 #include "string.h"
 
 
-#line 55 "src/spec.exc"
+#line 58 "src/spec.exc"
 static Node *readSpecCmdPrime(TransformState *state, Node *node, int *then, void *arg)
 {
     SpecCmd **ret = (SpecCmd **) arg;
@@ -139,7 +145,7 @@ static void freeSpecCmd(SpecCmd *cmd)
 
 /* load the default or specified spec file (return allocated) */
 
-#line 157 "src/spec.exc"
+#line 160 "src/spec.exc"
  Spec *excLoadSpec(const char *bindir, const char *file)
 {
     FILE *f = NULL;
@@ -222,7 +228,7 @@ static void freeSpecCmd(SpecCmd *cmd)
 
 /* run a spec command with the given replacements */
 
-#line 238 "src/spec.exc"
+#line 241 "src/spec.exc"
  struct Buffer_char execSpec(
     Spec *spec, SpecCmd *cmd,
     char *const addlFlags[],

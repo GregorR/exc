@@ -8,18 +8,26 @@
  * You should have received a copy of the CC0 Public Domain Dedication along
  * with this software. If not, see
  * <http://creativecommons.org/publicdomain/zero/1.0/>. 
- */ @public;
+ */ 
 
-@raw(#define _XOPEN_SOURCE 700 /* for strdup */);
+#line 13 "src/exc-namespace.exc"
+#define _XOPEN_SOURCE 700
 
-@include(stdio.h);
-@include(stdlib.h);
-@include(string.h);
+#include "stdio.h"
 
-@import(parse);
-@import(transform);
-@import(unparse);
+#include "stdlib.h"
 
+#include "string.h"
+
+
+#include "parse.h"
+
+#include "transform.h"
+
+#include "unparse.h"
+
+
+#line 23 "src/exc-namespace.exc"
 static void globalAdd(Node *pnode, Node *cnode)
 {
     /* look for the translation unit */
@@ -163,3 +171,4 @@ void exctension(TransformState *state)
 {
     trAddStage(state, "namespace", excNamespace);
 }
+#line 1 "<stdin>"
