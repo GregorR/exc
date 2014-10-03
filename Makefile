@@ -5,7 +5,7 @@ SRC=\
 	transform.exc unparse.exc whereami.exc
 
 EXTENSIONS=\
-	ggggc2
+	ggggc2 namespace
 
 all: exc
 	for i in $(EXTENSIONS); do \
